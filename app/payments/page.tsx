@@ -16,7 +16,7 @@ type PaymentRow = {
   status: string | null;
   created_at: string;
   paid_at: string | null;
-  members?: MemberJoin | null;
+  members?: MemberJoin[] | null;
 };
 
 function peso(n?: number | null) {
@@ -94,7 +94,7 @@ export default function PaymentsPage() {
     const s = search.trim().toLowerCase();
 
     return rows.filter((r) => {
-      const m0 = r.members;
+      const m0 = r.members?.[0] ?? null;
       const memberCode = (m0?.member_code ?? "").toLowerCase();
       const memberName = (m0?.name ?? "").toLowerCase();
       const pkg = r.package_name ?? "";
@@ -275,7 +275,7 @@ export default function PaymentsPage() {
                   const status = (r.status ?? "pending").toLowerCase();
                   const isPaid = status === "paid";
                   const busy = !!marking[r.id];
-                  const m0 = r.members;
+                  const m0 = r.members?.[0] ?? null;
 
                   return (
                     <div
