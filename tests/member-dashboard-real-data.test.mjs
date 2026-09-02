@@ -10,7 +10,7 @@ const dashboardPage = fs.readFileSync(
   new URL('../app/member/dashboard/page.tsx', import.meta.url),
   'utf8'
 )
-const mePage = fs.readFileSync(new URL('../app/me/page.tsx', import.meta.url), 'utf8')
+const profilePage = fs.readFileSync(new URL('../app/member/profile/page.tsx', import.meta.url), 'utf8')
 
 test('member dashboard does not fall back to invented membership values', () => {
   for (const fakeValue of [
@@ -40,10 +40,10 @@ test('member dashboard receives real profile, sessions, and payments data', () =
   assert.match(dashboardPage, /payments=/)
 })
 
-test('/me uses the shared server-side member account loader', () => {
-  assert.doesNotMatch(mePage, /["']use client["']/)
-  assert.match(mePage, /loadMemberAccountData/)
-  assert.match(mePage, /sessions_used/)
-  assert.match(mePage, /payment_status/)
-  assert.match(mePage, /Session Timeline/)
+test('/member/profile uses the shared server-side member account loader', () => {
+  assert.doesNotMatch(profilePage, /["']use client["']/)
+  assert.match(profilePage, /loadMemberAccountData/)
+  assert.match(profilePage, /sessions_used/)
+  assert.match(profilePage, /payment_status/)
+  assert.match(profilePage, /member\.member_code/)
 })

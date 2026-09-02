@@ -35,7 +35,7 @@ type Props = {
 
 const navItems = [
   { label: "Home", icon: Home, href: "/member/dashboard" },
-  { label: "Profile", icon: UserIcon, href: "/me" },
+  { label: "Profile", icon: UserIcon, href: "/member/profile" },
 ]
 
 function formatDateTime(iso: string | null) {
@@ -265,8 +265,8 @@ export default function BearfitDashboardClient({
                       <span>
                         {sessionsUsed} used · {sessionsLeft} remaining · {totalSessions} total
                       </span>
-                      <Link href="/me" className="font-medium text-[#ff7a1a] hover:text-[#ff9b54]">
-                        View account details
+                      <Link href="/member/profile" className="font-medium text-[#ff7a1a] hover:text-[#ff9b54]">
+                        View Profile
                       </Link>
                     </div>
                   </div>
@@ -384,8 +384,8 @@ export default function BearfitDashboardClient({
             )}
 
             <div className="mt-5 flex justify-center gap-3 lg:hidden">
-              <Link href="/me" className="rounded-full bg-[#25324a] px-5 py-3 text-sm font-semibold text-white">
-                My Account
+              <Link href="/member/profile" className="rounded-full bg-[#25324a] px-5 py-3 text-sm font-semibold text-white">
+                Profile
               </Link>
               <button onClick={handleSignOut} className="rounded-full bg-[#ff7a1a] px-5 py-3 text-sm font-semibold text-white">
                 Sign out
