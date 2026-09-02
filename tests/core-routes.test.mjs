@@ -13,3 +13,9 @@ test('signup does not manually create members because the auth trigger owns prof
   const source = fs.readFileSync(new URL('../app/api/auth/signup/route.ts', import.meta.url), 'utf8')
   assert.doesNotMatch(source, /\.from\(["']members["']\)/)
 })
+
+test('payments models the Supabase embedded members relation as an array', () => {
+  const source = fs.readFileSync(new URL('../app/payments/PaymentsPageClient.tsx', import.meta.url), 'utf8')
+  assert.match(source, /members\?:\s*MemberJoin\[\]\s*\|\s*null/)
+  assert.match(source, /row\.members\?\.\[0\]/)
+})

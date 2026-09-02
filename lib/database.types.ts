@@ -109,6 +109,8 @@ export type Database = {
           created_at: string
           paid_at: string | null
           created_by: string | null
+          sessions_purchased: number
+          credit_applied_at: string | null
         }
         Insert: {
           id?: string
@@ -122,6 +124,8 @@ export type Database = {
           created_at?: string
           paid_at?: string | null
           created_by?: string | null
+          sessions_purchased?: number
+          credit_applied_at?: string | null
         }
         Update: Partial<Database["public"]["Tables"]["payments"]["Insert"]>
         Relationships: []
@@ -151,8 +155,24 @@ export type Database = {
     }
     Views: Record<string, never>
     Functions: {
+      staff_mark_payment_paid: {
+        Args: { p_payment_id: string }
+        Returns: Json
+      }
       staff_qr_checkin: {
         Args: { p_member_code: string; p_notes?: string | null }
+        Returns: Json
+      }
+      staff_record_payment: {
+        Args: {
+          p_amount: number
+          p_member_id: string
+          p_package_name: string
+          p_payment_type?: string | null
+          p_sessions_purchased: number
+          p_stage: string
+          p_status?: string
+        }
         Returns: Json
       }
     }
