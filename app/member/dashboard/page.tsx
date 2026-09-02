@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
+import { loadMemberAccountData } from "@/lib/member-account"
 import MemberDashboardPageClient from "./MemberDashboardPageClient"
 
 export default async function MemberDashboardPage() {
@@ -14,11 +15,21 @@ export default async function MemberDashboardPage() {
     redirect("/welcome")
   }
 
-  const { data: member } = await supabase
-    .from("members")
-    .select("*")
-    .eq("user_id", user.id)
-    .maybeSingle()
+  const account = await loadMemberAccountData(user.id)
+  const userFullName =
+    typeof user.user_metadata?.full_name === "string"
+      ? user.user_metadata.full_name
+      : null
 
-  return <MemberDashboardPageClient user={user} member={member ?? null} />
+  return (
+    <MemberDashboardPageClient
+      userEmail={user.email ?? null}
+      userFullName={userFullName}
+      member={account.member}
+      profile={account.profile}
+      sessionLogs={account.sessionLogs}
+      payments={account.payments}
+      loadError={account.loadError}
+    />
+  )
 }
