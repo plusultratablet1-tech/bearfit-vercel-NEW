@@ -47,7 +47,7 @@ export async function POST(request: Request) {
       message: requiresEmailConfirmation
         ? "Account created. Check your email to confirm your account before signing in."
         : "Account created successfully",
-      redirectTo: requiresEmailConfirmation ? "/login" : "/member/dashboard",
+      redirectTo: requiresEmailConfirmation ? "/login" : "/launch",
     })
   } catch (error) {
     console.error("Signup error:", error)

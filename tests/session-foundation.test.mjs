@@ -22,5 +22,5 @@ test('the public init-db service-key route has been removed', () => {
 test('email confirmation callback exchanges the Supabase token for a session', () => {
   const source = fs.readFileSync(new URL('../app/auth/confirm/route.ts', import.meta.url), 'utf8')
   assert.match(source, /verifyOtp/)
-  assert.match(source, /member\/dashboard/)
+  assert.match(source, /\/launch/)
 })

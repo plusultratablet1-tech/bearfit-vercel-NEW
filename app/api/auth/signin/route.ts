@@ -32,7 +32,7 @@ export async function POST(request: Request) {
         email: data.user.email,
       },
       message: "Login successful",
-      redirectTo: "/member/dashboard",
+      redirectTo: "/launch",
     });
   } catch (error) {
     console.error("Signin error:", error);

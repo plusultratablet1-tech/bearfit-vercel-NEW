@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash })
 
     if (!error) {
-      redirectTo.pathname = "/member/dashboard"
+      redirectTo.pathname = "/launch"
       return NextResponse.redirect(redirectTo)
     }
   }
