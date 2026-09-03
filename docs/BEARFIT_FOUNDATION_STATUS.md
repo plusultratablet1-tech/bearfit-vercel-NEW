@@ -31,3 +31,103 @@ Set the Supabase Site URL to the production Vercel/custom domain.
 ## Remaining dependency task
 
 The source currently pins Next.js 16.1.3. The execution environment used for this stabilization cannot reach npm, so the lockfile could not be safely regenerated for a framework upgrade. Upgrade Next.js and `eslint-config-next` together in a networked environment and regenerate `pnpm-lock.yaml` before relying on the security-version upgrade.
+
+## Scheduling and package-cycle milestone — production verified 2026-09-03
+
+The Schedule / Booking phase is implemented and production-verified against the BearFit Supabase project.
+
+### Package and payment model
+
+- Added canonical `package_definitions`, `package_payment_stages`, `member_package_cycles`, and `member_package_stage_payments` tables.
+- Core catalog: Full 24, Full 48, Partial 24, Pilates 5, Pilates 10, Pilates 20, and Pilates 1-on-1.
+- Pilates validity rules are enforced at the package-cycle level: 5 = 30 days, 10 = 45 days, 20 = 60 days.
+- Pilates group and Pilates 1-on-1 are separate service categories; group credits cannot fund 1-on-1 attendance.
+- Partial 24 activation creates one 24-session cycle; installment stages at 19 and 13 sessions clear booking gates and do not add duplicate sessions.
+- Partial 24 renewal states: 2 left = `Renewal Soon`, 1 left = `Last Session — Renew Now`, 0 left = no new booking/check-in until renewal.
+- Existing `members.sessions_*` counters remain a compatibility mirror for the primary fitness balance while package cycles are the scheduling source of truth.
+
+### Scheduling and booking model
+
+- Added `availability_rules`, `schedule_slots`, and `bookings` with RLS and covering foreign-key indexes.
+- Staff/admin can create recurring availability, generate concrete slots, create one-off slots, assign members, confirm/reject member requests, reassign coaches, cancel bookings, and mark no-shows.
+- Members can request open home-branch slots or send custom requests with a named home-branch coach or `Any available coach`.
+- Member self-booking is blocked inside 24 hours and instructs the member to contact staff/admin.
+- Member self-cancellation works until 4 hours before the confirmed start; inside 4 hours the operation returns staff-contact-required without cancelling.
+- Pending requests do not consume capacity. Confirmation rechecks capacity, coach conflicts, branch, package eligibility, payment gates, and remaining usable credits transactionally.
+- Booking confirmation never deducts a package session.
+
+### Attendance integration
+
+- Check-in resolves a confirmed booking/package before consuming a session.
+- One successful booking check-in consumes exactly one package session, writes one `session_logs` row, and marks the booking `completed`.
+- Repeating the same booking check-in cannot consume a second session.
+- Staff no-show actions require an explicit `Charge 1 session` choice. Uncharged no-show consumes zero; charged no-show consumes exactly one; repeating it cannot double-charge.
+- The Member Dashboard reads real upcoming confirmed bookings and real session/payment activity.
+
+### Production verification evidence
+
+Verified against production/live Supabase with reversible transactions where destructive test data was not needed:
+
+- recurring slot generation is idempotent (second generation of the same window creates zero duplicates),
+- >24-hour member request → staff confirmation → Member Dashboard Upcoming Session,
+- live confirmed booking check-in completed the booking and moved the test member from 1 used / 4 left to 2 used / 3 left,
+- inside-24-hour member booking is blocked,
+- inside-4-hour member cancellation requires staff,
+- uncharged no-show = 0 session delta,
+- charged no-show = -1 session exactly once,
+- Partial 24 19/13 payment gates block new bookings until paid while allowing already-confirmed attendance,
+- 2/1/0 remaining-session warning/block rules behave as specified,
+- Pilates 5/10/20 validity = 30/45/60 days,
+- Pilates group credits cannot fund Pilates 1-on-1.
+
+The local source regression suite has 46 passing tests. Vercel has successfully built the scheduling/dashboard application changes; the most recent package-eligibility fix is SQL-only.
+
+### Active scheduling/package RPC surface
+
+Member-facing:
+
+- `member_package_eligibility`
+- `member_coach_directory`
+- `member_request_slot`
+- `member_request_custom_session`
+- `member_cancel_booking`
+
+Staff/admin:
+
+- `staff_package_attention_queue`
+- `staff_record_package_payment`
+- `staff_mark_package_payment_paid`
+- `staff_create_availability_rule`
+- `staff_generate_slots`
+- `staff_create_one_off_slot`
+- `staff_cancel_slot`
+- `staff_confirm_booking`
+- `staff_reject_booking`
+- `staff_create_assignment`
+- `staff_reassign_booking`
+- `staff_cancel_booking`
+- `staff_checkin_context`
+- `staff_qr_checkin`
+- `staff_mark_no_show`
+
+### Security/advisor status
+
+- RLS remains enabled on member, package, scheduling, booking, payment, and attendance tables.
+- State-changing RPCs use fixed `search_path=''` and perform explicit authentication plus member ownership or staff/admin authorization checks.
+- Supabase security advisor still reports expected visibility/executable warnings for RLS-protected authenticated tables and controlled `SECURITY DEFINER` RPCs because they are intentionally exposed through the authenticated API surface.
+- Supabase Auth leaked-password protection is still disabled at the project level and should be enabled before a broader production launch.
+- Performance advisor reports only unused-index informational notices on the low-data test project; the previously reported missing foreign-key indexes were added.
+
+### Role status
+
+The current M0001 test account remains `admin` so Payments, Check-in, and Staff Schedule can continue to be exercised. When a separate permanent staff/admin account is created, change any ordinary member test account back to `member` and verify staff routes redirect it to `/member/dashboard`.
+
+### Explicitly deferred after this milestone
+
+- email/SMS/push notifications for booking or renewal alerts,
+- waitlist automation,
+- Google Calendar/external calendar synchronization,
+- automatic payment gateway collection,
+- true cross-member/shared-credit relationship enforcement for shareable Pilates packages,
+- stricter automatic check-in time-window policy,
+- Next.js/security dependency upgrade requiring lockfile regeneration in a networked development environment.
