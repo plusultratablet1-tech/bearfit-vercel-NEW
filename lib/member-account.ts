@@ -9,6 +9,31 @@ export type BookingRow = Database["public"]["Tables"]["bookings"]["Row"]
 
 export type PackageAlert = { serviceCategory: string; warningLevel?: string | null; message?: string | null; blockingReason?: string | null }
 
+export type BearforceProgress = {
+  name: string
+  next_name: string | null
+  next_threshold: number | null
+  points_to_next: number
+  progress_percent: number
+}
+
+export type BearforceSummary = {
+  lifetime_points: number
+  season_key: string
+  season_starts_at: string | null
+  season_ends_at: string | null
+  season_earned: number
+  season_spent: number
+  season_balance: number
+  weekly_goal: number
+  current_week_sessions: number
+  weekly_goal_met: boolean
+  streak_weeks: number
+  grace_week_active: boolean
+  fitness_tier: BearforceProgress
+  prestige: BearforceProgress
+}
+
 export type MemberAccountData = {
   member: MemberRow | null
   profile: ProfileRow | null
@@ -18,6 +43,7 @@ export type MemberAccountData = {
   coachNames: Record<string, string>
   packageEligibility: Record<string, unknown>
   packageAlerts: PackageAlert[]
+  bearforceSummary: BearforceSummary | null
   loadError: string | null
 }
 
@@ -50,6 +76,7 @@ export async function loadMemberAccountData(userId: string): Promise<MemberAccou
       coachNames: {},
       packageEligibility: {},
       packageAlerts: [],
+      bearforceSummary: null,
       loadError: "We couldn't load your membership details right now.",
     }
   }
@@ -64,11 +91,12 @@ export async function loadMemberAccountData(userId: string): Promise<MemberAccou
       coachNames: {},
       packageEligibility: {},
       packageAlerts: [],
+      bearforceSummary: null,
       loadError: null,
     }
   }
 
-  const [sessionsResult, paymentsResult, bookingsResult] = await Promise.all([
+  const [sessionsResult, paymentsResult, bookingsResult, bearforceResult] = await Promise.all([
     supabase
       .from("session_logs")
       .select("*")
@@ -89,6 +117,7 @@ export async function loadMemberAccountData(userId: string): Promise<MemberAccou
       .gte("start_at", new Date().toISOString())
       .order("start_at", { ascending: true })
       .limit(3),
+    supabase.rpc("member_bearforce_summary"),
   ])
 
   if (sessionsResult.error) {
@@ -97,6 +126,10 @@ export async function loadMemberAccountData(userId: string): Promise<MemberAccou
 
   if (paymentsResult.error) {
     console.error("Failed to load BearFit payments", paymentsResult.error)
+  }
+
+  if (bearforceResult.error) {
+    console.error("Failed to load Bearforce progression", bearforceResult.error)
   }
 
   const upcomingBookings = (bookingsResult.data ?? []) as BookingRow[]
@@ -141,8 +174,9 @@ export async function loadMemberAccountData(userId: string): Promise<MemberAccou
     coachNames,
     packageEligibility,
     packageAlerts,
+    bearforceSummary: bearforceResult.error ? null : (bearforceResult.data as BearforceSummary | null),
     loadError:
-      sessionsResult.error || paymentsResult.error
+      sessionsResult.error || paymentsResult.error || bearforceResult.error
         ? "Some recent account activity couldn't be loaded."
         : null,
   }

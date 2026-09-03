@@ -16,10 +16,15 @@ export type Database = {
       availability_rules: Table<{ id:string; coach_user_id:string; branch:string; session_type:string; weekday:number; local_start_time:string; local_end_time:string; slot_duration_minutes:number; capacity:number; valid_from:string; valid_until:string|null; active:boolean; created_by:string; created_at:string; updated_at:string }>
       schedule_slots: Table<{ id:string; availability_rule_id:string|null; coach_user_id:string|null; branch:string; session_type:string; start_at:string; end_at:string; capacity:number; status:string; created_by:string; created_at:string; updated_at:string }>
       bookings: Table<{ id:string; member_id:string; slot_id:string|null; request_kind:string; status:string; requested_coach_user_id:string|null; assigned_coach_user_id:string|null; branch:string; session_type:string; requested_start_at:string; requested_duration_minutes:number; start_at:string|null; end_at:string|null; member_package_id:string|null; cancelled_at:string|null; cancel_reason:string|null; no_show_charged:boolean; created_by:string; created_at:string; updated_at:string }>
+      bearforce_point_events: Table<{ id:string; member_id:string; event_type:string; points:number; season_key:string; source_type:string; source_id:string; occurred_at:string; metadata:Json; created_at:string }>
+      bearforce_redemptions: Table<{ id:string; member_id:string; season_key:string; reward_label:string; points_spent:number; status:string; created_by:string; created_at:string; reversed_by:string|null; reversed_at:string|null }>
     }
     Views: Record<string, never>
     Functions: {
       member_coach_directory: { Args:never; Returns:{id:string;full_name:string;branch:string}[] }
+      member_bearforce_summary: { Args:never; Returns:Json }
+      staff_redeem_bearforce_points: { Args:{p_member_id:string;p_points:number;p_reward_label:string}; Returns:Json }
+      staff_reverse_bearforce_redemption: { Args:{p_redemption_id:string}; Returns:Json }
       member_package_eligibility: { Args:{p_service_category:string}; Returns:Json }
       member_request_slot: { Args:{p_slot_id:string}; Returns:Json }
       member_request_custom_session: { Args:{p_session_type:string;p_requested_start_at:string;p_requested_coach_user_id?:string|null;p_duration_minutes?:number}; Returns:Json }

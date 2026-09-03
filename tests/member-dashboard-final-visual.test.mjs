@@ -27,12 +27,13 @@ test('dashboard uses real package payment name when a legacy compatibility packa
   assert.match(dashboard, /payments\.find/)
 })
 
-test('activity area uses richer session and payment rows without fake rewards data', () => {
+test('activity area keeps rich session/payment rows while progression data is real', () => {
   for (const required of ['Activity Log', 'Sessions', 'Payments', 'Session used', 'Payment received']) {
     assert.match(dashboard, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
   }
 
-  for (const fake of ['Workout Streak', 'Bearforce Points', 'Prestige Member', 'Fitness Level']) {
+  assert.match(dashboard, /bearforceSummary/)
+  for (const fake of ['Prestige Member', 'Fitness Level']) {
     assert.doesNotMatch(dashboard, new RegExp(fake.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
   }
 })

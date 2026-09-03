@@ -11,11 +11,9 @@ test('member dashboard restores the approved visual hierarchy using real data', 
   for (const copy of [
     'Member Portal',
     'Package Progress',
-    'Your Stats',
-    'Sessions Used',
-    'Sessions Remaining',
-    'Total Sessions',
-    'Total Paid',
+    'Your Progression',
+    'Prestige / Season',
+    'Fitness Tier',
     'Upcoming Sessions',
     'Member Activity',
     'Book your next session',
@@ -26,8 +24,6 @@ test('member dashboard restores the approved visual hierarchy using real data', 
 
 test('restored dashboard does not reintroduce fake rewards or invented package data', () => {
   for (const fakeValue of [
-    'Workout Streak',
-    'Bearforce Points',
     'Prestige Member',
     'Fitness Level',
     'Full 48 Package+',

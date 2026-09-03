@@ -80,7 +80,7 @@ Verified against production/live Supabase with reversible transactions where des
 - Pilates 5/10/20 validity = 30/45/60 days,
 - Pilates group credits cannot fund Pilates 1-on-1.
 
-The local source regression suite has 46 passing tests. Vercel has successfully built the scheduling/dashboard application changes; the most recent package-eligibility fix is SQL-only.
+The combined local BearFit regression suite currently has 72 passing tests after the progression milestone. Vercel remains the final full Next.js compile/build verification for each uploaded release package.
 
 ### Active scheduling/package RPC surface
 
@@ -120,7 +120,7 @@ Staff/admin:
 
 ### Role status
 
-The current M0001 test account remains `admin` so Payments, Check-in, and Staff Schedule can continue to be exercised. When a separate permanent staff/admin account is created, change any ordinary member test account back to `member` and verify staff routes redirect it to `/member/dashboard`.
+Role separation is complete: `JJ / M0001` is a normal `member`, while the dedicated `BearFit Admin` login is `admin` with no member record attached. Member access to Payments, Check-in, and Staff Schedule has been verified blocked/redirected, while the Admin account can access those staff surfaces.
 
 ### Explicitly deferred after this milestone
 
@@ -131,3 +131,82 @@ The current M0001 test account remains `admin` so Payments, Check-in, and Staff 
 - true cross-member/shared-credit relationship enforcement for shareable Pilates packages,
 - stricter automatic check-in time-window policy,
 - Next.js/security dependency upgrade requiring lockfile regeneration in a networked development environment.
+
+## Bearforce progression milestone — production verified 2026-09-03
+
+The original dashboard progression concepts are now real data features instead of placeholders.
+
+### Point earning
+
+- Successful real check-in/completed training session: +100 Bearforce Points.
+- Paid package activation: +200.
+- On-time Partial 24 installment at the 19-left or 13-left checkpoint: +150.
+- Early renewal while a prior same-service package still has at least one usable session: +250 bonus.
+- Charged no-shows consume a package session but award zero Bearforce Points.
+- Earning is append-only and source-key idempotent, so retrying the same check-in/payment cannot duplicate points.
+- Historical legitimate session logs were backfilled at +100 each; historical payment bonuses were intentionally not guessed.
+
+### Lifetime, season, spendable balance
+
+- `Lifetime Bearforce Points` is the permanent total ever earned and never decreases from reward redemption.
+- BearFit seasons are calendar quarters (3 months) in Asia/Manila.
+- `Season Earned` is the current-quarter earned total used for Prestige rank.
+- `Season Balance` is current-quarter earned minus completed redemptions and is the spendable amount.
+- Unused seasonal balance expires naturally at the next quarter because each season is scoped separately; lifetime points remain.
+- Staff/admin redemption and reversal RPCs are available; a fixed reward catalog is intentionally deferred until actual reward items/costs are defined.
+
+### Workout streak
+
+- Weekly goal is 3+ real completed/check-in sessions, Monday through Sunday in Asia/Manila.
+- One isolated missed completed week is a grace week and does not increase the streak.
+- The following successful week continues the streak; two missed completed weeks in a row reset it.
+- The current in-progress week does not break a streak before the week is complete.
+
+### Progression levels
+
+Lifetime Fitness Tier:
+- Bear Cub: 0–999
+- Grizzly: 1,000–4,999
+- Kodiak: 5,000–9,999
+- Titan Bear: 10,000–24,999
+- Apex Bear: 25,000+
+
+Current-season Prestige:
+- Rookie: 0–499
+- Bronze: 500–1,499
+- Silver: 1,500–2,999
+- Gold: 3,000–4,999
+- Prestige: 5,000+
+
+### Dashboard integration
+
+The Member Dashboard four-card progression area now shows real:
+- Workout Streak with current `x / 3 this week` progress and grace state,
+- Bearforce Points with Lifetime total and Available-to-spend season balance,
+- Prestige / Season with quarter and season-earned total,
+- Fitness Tier with progress toward the next lifetime tier.
+
+### Live verification evidence
+
+Production Supabase rollback verification confirmed:
+- check-in awards exactly +100 once,
+- repeated check-in does not duplicate points,
+- charged no-show awards +0,
+- activation awards +200,
+- early renewal bonus awards +250,
+- on-time Partial 24 19-left installment awards +150,
+- reward redemption decreases season balance without changing lifetime points,
+- reversing a redemption restores season balance,
+- quarter boundary separates Q3/Q4 season totals,
+- an isolated missed week activates grace and preserves the prior streak,
+- completing the next qualifying week continues the streak.
+
+The real M0001 package balance remained 2 used / 3 remaining after rollback verification. At the time of verification M0001 had 200 lifetime/2026-Q3 points from two existing legitimate completed session events, was Rookie prestige, and Bear Cub lifetime tier.
+
+### Advisor status after progression DDL
+
+- Both Bearforce tables have RLS enabled and member/staff read policies.
+- The two Bearforce redemption staff-actor foreign keys now have covering indexes.
+- Performance advisor reports only unused-index INFO notices on the low-data test project.
+- Security advisor continues to report the existing authenticated GraphQL visibility and controlled `SECURITY DEFINER` RPC warnings by design, plus leaked-password protection disabled at the project level.
+

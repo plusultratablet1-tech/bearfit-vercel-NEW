@@ -8,6 +8,7 @@ import type {
   SessionLogRow,
   BookingRow,
   PackageAlert,
+  BearforceSummary,
 } from "@/lib/member-account"
 
 interface MemberDashboardPageClientProps {
@@ -21,6 +22,7 @@ interface MemberDashboardPageClientProps {
   coachNames: Record<string, string>
   packageEligibility: Record<string, unknown>
   packageAlerts: PackageAlert[]
+  bearforceSummary: BearforceSummary | null
   loadError: string | null
 }
 

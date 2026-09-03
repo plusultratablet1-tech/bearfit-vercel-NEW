@@ -16,11 +16,7 @@ test('member dashboard does not fall back to invented membership values', () => 
   for (const fakeValue of [
     'M00-1',
     'Full 48 Package+',
-    'Workout Streak',
-    'Bearforce Points',
     '1540',
-    'Prestige Member',
-    'Fitness Level',
     'Top Member',
     'On Target',
     'On Fire',

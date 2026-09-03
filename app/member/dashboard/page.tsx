@@ -33,6 +33,7 @@ export default async function MemberDashboardPage() {
       coachNames={account.coachNames}
       packageEligibility={account.packageEligibility}
       packageAlerts={account.packageAlerts}
+      bearforceSummary={account.bearforceSummary}
       loadError={account.loadError}
     />
   )

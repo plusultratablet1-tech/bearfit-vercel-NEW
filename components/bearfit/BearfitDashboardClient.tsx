@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import type {
+  BearforceSummary,
   BookingRow,
   MemberRow,
   PackageAlert,
@@ -19,12 +20,16 @@ import {
   Clock3,
   CreditCard,
   Dumbbell,
+  Flame,
   Home,
+  Coins,
   LogOut,
   MapPin,
   MessageCircle,
   MoreHorizontal,
   ReceiptText,
+  ShieldCheck,
+  Trophy,
   User as UserIcon,
 } from "lucide-react"
 
@@ -41,6 +46,7 @@ type Props = {
   coachNames: Record<string, string>
   packageEligibility: Record<string, unknown>
   packageAlerts: PackageAlert[]
+  bearforceSummary: BearforceSummary | null
   loadError: string | null
 }
 
@@ -63,6 +69,10 @@ function formatDateTime(iso: string | null) {
     hour: "numeric",
     minute: "2-digit",
   })
+}
+
+function formatPoints(value: number | null | undefined) {
+  return new Intl.NumberFormat("en-PH", { maximumFractionDigits: 0 }).format(value ?? 0)
 }
 
 function formatMoney(value: number | null | undefined) {
@@ -195,6 +205,7 @@ export default function BearfitDashboardClient({
   coachNames,
   packageEligibility,
   packageAlerts,
+  bearforceSummary,
   loadError,
 }: Props) {
   const handleSignOut = async () => {
@@ -438,12 +449,46 @@ export default function BearfitDashboardClient({
                   </section>
 
                   <section className="mt-6">
-                    <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-white/45">Your Stats</p>
+                    <div className="mb-3 flex items-end justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/45">Your Progression</p>
+                        <p className="mt-1 text-sm text-white/35">Built from real BearFit check-ins and payment activity.</p>
+                      </div>
+                      {bearforceSummary && (
+                        <span className="hidden rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-white/45 sm:inline-flex">
+                          Season {bearforceSummary.season_key}
+                        </span>
+                      )}
+                    </div>
                     <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-                      <MetricCard label="Sessions Used" value={String(sessionsUsed)} sublabel="Completed sessions" />
-                      <MetricCard label="Sessions Remaining" value={String(sessionsLeft)} sublabel="Available sessions" />
-                      <MetricCard label="Total Sessions" value={String(totalSessions)} sublabel={displayPackageName} />
-                      <MetricCard label="Total Paid" value={formatMoney(member.total_paid)} sublabel={`Status: ${paymentStatus}`} />
+                      <ProgressionCard
+                        icon={Flame}
+                        label="Workout Streak"
+                        value={bearforceSummary ? `${bearforceSummary.streak_weeks} wk` : "—"}
+                        sublabel={bearforceSummary ? `${bearforceSummary.current_week_sessions} / ${bearforceSummary.weekly_goal} this week${bearforceSummary.grace_week_active ? " · Grace active" : ""}` : "Progress unavailable"}
+                        progress={bearforceSummary ? Math.min((bearforceSummary.current_week_sessions / Math.max(bearforceSummary.weekly_goal, 1)) * 100, 100) : 0}
+                      />
+                      <ProgressionCard
+                        icon={Coins}
+                        label="Bearforce Points"
+                        value={bearforceSummary ? formatPoints(bearforceSummary.lifetime_points) : "—"}
+                        sublabel={bearforceSummary ? `${formatPoints(bearforceSummary.season_balance)} Available to spend · Lifetime` : "Progress unavailable"}
+                        progress={bearforceSummary?.prestige?.progress_percent ?? 0}
+                      />
+                      <ProgressionCard
+                        icon={Trophy}
+                        label="Prestige / Season"
+                        value={bearforceSummary?.prestige?.name ?? "—"}
+                        sublabel={bearforceSummary ? `${bearforceSummary.season_key} · ${formatPoints(bearforceSummary.season_earned)} earned` : "Progress unavailable"}
+                        progress={bearforceSummary?.prestige?.progress_percent ?? 0}
+                      />
+                      <ProgressionCard
+                        icon={ShieldCheck}
+                        label="Fitness Tier"
+                        value={bearforceSummary?.fitness_tier?.name ?? "—"}
+                        sublabel={bearforceSummary?.fitness_tier?.next_name ? `${formatPoints(bearforceSummary.fitness_tier.points_to_next)} pts to ${bearforceSummary.fitness_tier.next_name}` : "Top lifetime tier reached"}
+                        progress={bearforceSummary?.fitness_tier?.progress_percent ?? 0}
+                      />
                     </div>
                   </section>
 
@@ -684,12 +729,32 @@ function MobileNavItem({
   )
 }
 
-function MetricCard({ label, value, sublabel }: { label: string; value: string; sublabel: string }) {
+function ProgressionCard({
+  icon: Icon,
+  label,
+  value,
+  sublabel,
+  progress,
+}: {
+  icon: typeof Home
+  label: string
+  value: string
+  sublabel: string
+  progress: number
+}) {
   return (
-    <div className="min-w-0 rounded-[20px] border border-white/[0.04] bg-[#242424] p-4 md:p-5">
-      <p className="text-xs text-white/45 sm:text-sm">{label}</p>
-      <p className="mt-1 break-words text-2xl font-black tracking-tight sm:text-3xl">{value}</p>
-      <p className="mt-2 text-xs text-white/45">{sublabel}</p>
+    <div className="min-w-0 rounded-[20px] border border-white/[0.05] bg-[#242424] p-4 md:p-5">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-bold text-white/55 sm:text-sm">{label}</p>
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#ff7a1a]/15 text-[#ff8b38]">
+          <Icon size={16} />
+        </div>
+      </div>
+      <p className="mt-2 break-words text-2xl font-black tracking-tight sm:text-3xl">{value}</p>
+      <p className="mt-2 min-h-8 text-[11px] leading-4 text-white/45 sm:text-xs">{sublabel}</p>
+      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/[0.07]">
+        <div className="h-full rounded-full bg-gradient-to-r from-[#ff6b0a] to-[#ff9b54]" style={{ width: `${Math.max(0, Math.min(progress, 100))}%` }} />
+      </div>
     </div>
   )
 }
