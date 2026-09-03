@@ -9,12 +9,12 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [
-      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/icons/bearfit-orange-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/bearfit-orange-512.png", sizes: "512x512", type: "image/png" },
     ],
     apple: [
       {
-        url: "/icons/apple-touch-icon.png",
+        url: "/icons/bearfit-orange-apple-180.png",
         sizes: "180x180",
         type: "image/png",
       },
@@ -34,7 +34,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#F37120",
+  themeColor: "#F37020",
   colorScheme: "dark",
 }
 

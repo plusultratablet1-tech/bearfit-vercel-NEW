@@ -19,10 +19,10 @@ test('BearFit uses one canonical role-aware install manifest', () => {
   assert.match(manifest, /short_name:\s*["']BearFit["']/)
   assert.match(manifest, /start_url:\s*["']\/launch\?source=pwa["']/)
   assert.match(manifest, /display:\s*["']standalone["']/)
-  assert.match(manifest, /theme_color:\s*["']#F37120["']/i)
-  assert.match(manifest, /icon-192\.png/)
-  assert.match(manifest, /icon-512\.png/)
-  assert.match(manifest, /icon-maskable-512\.png/)
+  assert.match(manifest, /theme_color:\s*["']#F37020["']/i)
+  assert.match(manifest, /bearfit-orange-192\.png/)
+  assert.match(manifest, /bearfit-orange-512\.png/)
+  assert.match(manifest, /bearfit-orange-maskable-512\.png/)
   assert.match(manifest, /purpose:\s*["']maskable["']/)
 
   assert.equal(fs.existsSync(new URL('../public/manifest.json', import.meta.url)), false)
@@ -32,9 +32,9 @@ test('root layout exposes Apple/PWA metadata and boots the client PWA helper', (
   const layout = fs.readFileSync(layoutPath, 'utf8')
   assert.match(layout, /manifest:\s*["']\/manifest\.webmanifest["']/)
   assert.match(layout, /appleWebApp/)
-  assert.match(layout, /apple-touch-icon\.png/)
+  assert.match(layout, /bearfit-orange-apple-180\.png/)
   assert.match(layout, /viewportFit:\s*["']cover["']/)
-  assert.match(layout, /themeColor:\s*["']#F37120["']/i)
+  assert.match(layout, /themeColor:\s*["']#F37020["']/i)
   assert.match(layout, /BearFitPwaBootstrap/)
 })
 
@@ -65,8 +65,8 @@ test('service worker caches only static app assets and never private API/navigat
   const sw = fs.readFileSync(swPath, 'utf8')
   assert.match(sw, /bearfit-static-/)
   assert.match(sw, /\/_next\/static\//)
-  assert.match(sw, /\/icons\/icon-192\.png/)
-  assert.match(sw, /\/icons\/icon-512\.png/)
+  assert.match(sw, /\/icons\/bearfit-orange-192\.png/)
+  assert.match(sw, /\/icons\/bearfit-orange-512\.png/)
   assert.match(sw, /request\.mode\s*===\s*["']navigate["']/)
   assert.match(sw, /pathname\.startsWith\(["']\/api\/["']\)/)
   assert.match(sw, /pathname\.startsWith\(["']\/auth\/["']\)/)
@@ -94,10 +94,10 @@ function pngDimensions(url) {
 
 test('PWA-specific icon files exist at their declared dimensions', () => {
   const icons = [
-    ['../public/icons/icon-192.png', 192],
-    ['../public/icons/icon-512.png', 512],
-    ['../public/icons/icon-maskable-512.png', 512],
-    ['../public/icons/apple-touch-icon.png', 180],
+    ['../public/icons/bearfit-orange-192.png', 192],
+    ['../public/icons/bearfit-orange-512.png', 512],
+    ['../public/icons/bearfit-orange-maskable-512.png', 512],
+    ['../public/icons/bearfit-orange-apple-180.png', 180],
   ]
 
   for (const [file, size] of icons) {

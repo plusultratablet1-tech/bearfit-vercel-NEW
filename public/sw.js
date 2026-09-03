@@ -1,10 +1,10 @@
 const CACHE_PREFIX = "bearfit-static-"
-const CACHE_NAME = `${CACHE_PREFIX}v1`
+const CACHE_NAME = "bearfit-static-v2"
 const PRECACHE_URLS = [
-  "/icons/icon-192.png",
-  "/icons/icon-512.png",
-  "/icons/icon-maskable-512.png",
-  "/icons/apple-touch-icon.png",
+  "/icons/bearfit-orange-192.png",
+  "/icons/bearfit-orange-512.png",
+  "/icons/bearfit-orange-maskable-512.png",
+  "/icons/bearfit-orange-apple-180.png",
   "/Bearfit-Logo.png",
 ]
 
