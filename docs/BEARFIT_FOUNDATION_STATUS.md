@@ -210,3 +210,12 @@ The real M0001 package balance remained 2 used / 3 remaining after rollback veri
 - Performance advisor reports only unused-index INFO notices on the low-data test project.
 - Security advisor continues to report the existing authenticated GraphQL visibility and controlled `SECURITY DEFINER` RPC warnings by design, plus leaked-password protection disabled at the project level.
 
+## Bearforce Rewards Catalog
+
+- Member `/member/rewards` catalog uses the real current-season Bearforce spendable balance.
+- Pending requests reserve points and limited stock but do not spend points.
+- Staff/Admin `/staff/rewards` controls catalog creation/updates, approval, rejection, and claimed status.
+- Approval spends seasonal Bearforce balance while Lifetime Points and Season Earned remain unchanged.
+- Limited stock is reserved atomically; rejection/cancellation releases it; approval consumes it.
+- No fake rewards are seeded. Staff creates real BearFit rewards and controls availability.
+- Pending requests from an ended season cannot be approved.

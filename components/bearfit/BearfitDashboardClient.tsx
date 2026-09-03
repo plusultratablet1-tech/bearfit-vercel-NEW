@@ -21,6 +21,7 @@ import {
   CreditCard,
   Dumbbell,
   Flame,
+  Gift,
   Home,
   Coins,
   LogOut,
@@ -53,6 +54,7 @@ type Props = {
 const navItems = [
   { label: "Home", icon: Home, href: "/member/dashboard" },
   { label: "Schedule", icon: CalendarDays, href: "/member/schedule" },
+  { label: "Rewards", icon: Gift, href: "/member/rewards" },
   { label: "Payments", icon: CreditCard, href: "#payments" },
   { label: "Profile", icon: UserIcon, href: "/member/profile" },
 ]
@@ -556,12 +558,12 @@ export default function BearfitDashboardClient({
                               </div>
 
                               <div className="lg:w-[360px]">
-                                <div className="rounded-[22px] border border-white/15 bg-black/45 p-3 backdrop-blur-md sm:p-4">
+                                <div className="rounded-[22px] border border-white/15 bg-[#111111]/95 p-3 sm:p-4">
                                   <div className="mb-3 flex items-center justify-between gap-3">
                                     <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/55">{sessionCountdown.label}</p>
                                     <Clock3 size={15} className="text-[#ff9b54]" />
                                   </div>
-                                  <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                                  <div className="grid grid-cols-2 gap-2">
                                     <CountdownCell label="Days" value={sessionCountdown.days} />
                                     <CountdownCell label="Hours" value={sessionCountdown.hours} />
                                     <CountdownCell label="Minutes" value={sessionCountdown.minutes} />
@@ -674,9 +676,10 @@ export default function BearfitDashboardClient({
               className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#07101f]/95 px-2 pt-2 backdrop-blur-xl lg:hidden"
               style={{ paddingBottom: "max(env(safe-area-inset-bottom), 10px)" }}
             >
-              <div className="mx-auto grid max-w-lg grid-cols-4 gap-1">
+              <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
                 <MobileNavItem href="/member/dashboard" label="Home" icon={Home} active />
                 <MobileNavItem href="/member/schedule" label="Schedule" icon={CalendarDays} />
+                <MobileNavItem href="/member/rewards" label="Rewards" icon={Gift} />
                 <MobileNavItem href="#payments" label="Payments" icon={CreditCard} />
                 <MobileNavItem href="/member/profile" label="Profile" icon={UserIcon} />
               </div>

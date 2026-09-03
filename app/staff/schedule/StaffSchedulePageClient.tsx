@@ -100,7 +100,7 @@ export default function StaffSchedulePageClient({ role, currentUserId }: { role:
 
   const openSlots = slots.filter(s => s.status === "open")
   return <main className="min-h-screen bg-[#020b1c] p-4 text-white md:p-8"><div className="mx-auto max-w-7xl">
-    <header className="mb-6 flex flex-wrap justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[.2em] text-orange-300">BearFit {role}</p><h1 className="text-3xl font-extrabold">Schedule Workspace</h1></div><div className="flex gap-2"><Link href="/payments" className="rounded-full bg-[#25324a] px-4 py-3 text-sm">Payments</Link><Link href="/checkin" className="rounded-full bg-[#ff7a1a] px-4 py-3 text-sm font-bold">Check-in</Link></div></header>
+    <header className="mb-6 flex flex-wrap justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[.2em] text-orange-300">BearFit {role}</p><h1 className="text-3xl font-extrabold">Schedule Workspace</h1></div><div className="flex flex-wrap gap-2"><Link href="/staff/rewards" className="rounded-full bg-[#25324a] px-4 py-3 text-sm">Rewards</Link><Link href="/payments" className="rounded-full bg-[#25324a] px-4 py-3 text-sm">Payments</Link><Link href="/checkin" className="rounded-full bg-[#ff7a1a] px-4 py-3 text-sm font-bold">Check-in</Link></div></header>
     {error && <div className="mb-4 rounded-2xl bg-red-500/10 p-4 text-red-200">{error}</div>}{success && <div className="mb-4 rounded-2xl bg-emerald-500/10 p-4 text-emerald-200">{success}</div>}
 
     <section className="mb-6 grid gap-4 lg:grid-cols-2">

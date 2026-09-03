@@ -18,6 +18,8 @@ export type Database = {
       bookings: Table<{ id:string; member_id:string; slot_id:string|null; request_kind:string; status:string; requested_coach_user_id:string|null; assigned_coach_user_id:string|null; branch:string; session_type:string; requested_start_at:string; requested_duration_minutes:number; start_at:string|null; end_at:string|null; member_package_id:string|null; cancelled_at:string|null; cancel_reason:string|null; no_show_charged:boolean; created_by:string; created_at:string; updated_at:string }>
       bearforce_point_events: Table<{ id:string; member_id:string; event_type:string; points:number; season_key:string; source_type:string; source_id:string; occurred_at:string; metadata:Json; created_at:string }>
       bearforce_redemptions: Table<{ id:string; member_id:string; season_key:string; reward_label:string; points_spent:number; status:string; created_by:string; created_at:string; reversed_by:string|null; reversed_at:string|null }>
+      reward_catalog: Table<{ id:string; title:string; description:string; category:string; image_url:string|null; points_cost:number; stock_quantity:number|null; reserved_quantity:number; redeemed_quantity:number; requires_active_membership:boolean; active:boolean; created_by:string; created_at:string; updated_at:string }>
+      reward_requests: Table<{ id:string; member_id:string; reward_id:string; season_key:string; points_cost:number; status:string; bearforce_redemption_id:string|null; requested_by:string; requested_at:string; decided_by:string|null; decided_at:string|null; claimed_by:string|null; claimed_at:string|null; decision_note:string|null; created_at:string; updated_at:string }>
     }
     Views: Record<string, never>
     Functions: {
@@ -25,6 +27,15 @@ export type Database = {
       member_bearforce_summary: { Args:never; Returns:Json }
       staff_redeem_bearforce_points: { Args:{p_member_id:string;p_points:number;p_reward_label:string}; Returns:Json }
       staff_reverse_bearforce_redemption: { Args:{p_redemption_id:string}; Returns:Json }
+      member_rewards_snapshot: { Args:never; Returns:Json }
+      member_request_reward: { Args:{p_reward_id:string}; Returns:Json }
+      member_cancel_reward_request: { Args:{p_request_id:string}; Returns:Json }
+      staff_reward_snapshot: { Args:never; Returns:Json }
+      staff_create_reward: { Args:{p_title:string;p_points_cost:number;p_description?:string;p_category?:string;p_image_url?:string|null;p_stock_quantity?:number|null;p_requires_active_membership?:boolean;p_active?:boolean}; Returns:string }
+      staff_update_reward: { Args:{p_reward_id:string;p_title:string;p_description:string;p_category:string;p_image_url:string|null;p_points_cost:number;p_stock_quantity:number|null;p_requires_active_membership:boolean;p_active:boolean}; Returns:Json }
+      staff_approve_reward_request: { Args:{p_request_id:string;p_note?:string|null}; Returns:Json }
+      staff_reject_reward_request: { Args:{p_request_id:string;p_note?:string|null}; Returns:Json }
+      staff_mark_reward_claimed: { Args:{p_request_id:string}; Returns:Json }
       member_package_eligibility: { Args:{p_service_category:string}; Returns:Json }
       member_request_slot: { Args:{p_slot_id:string}; Returns:Json }
       member_request_custom_session: { Args:{p_session_type:string;p_requested_start_at:string;p_requested_coach_user_id?:string|null;p_duration_minutes?:number}; Returns:Json }

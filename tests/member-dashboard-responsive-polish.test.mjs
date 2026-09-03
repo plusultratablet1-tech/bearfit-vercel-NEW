@@ -15,7 +15,6 @@ test('featured session card uses a four-part countdown instead of only a compact
     'Minutes',
     'Seconds',
     'grid-cols-2',
-    'lg:grid-cols-4',
   ]) {
     assert.match(dashboard, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
   }
