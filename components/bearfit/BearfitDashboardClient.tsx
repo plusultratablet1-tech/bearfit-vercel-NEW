@@ -26,7 +26,6 @@ import {
   MoreHorizontal,
   ReceiptText,
   User as UserIcon,
-  Wallet,
 } from "lucide-react"
 
 const supabase = createClient()
@@ -133,44 +132,56 @@ function sessionVisualForType(sessionType: string) {
   return { image: "/onboarding/better-fintness1.jpg", position: "center 34%" }
 }
 
-function useStartsIn(iso: string | null) {
-  const [label, setLabel] = useState("Upcoming")
+function useSessionCountdown(iso: string | null) {
+  const [countdown, setCountdown] = useState({
+    days: "00",
+    hours: "00",
+    minutes: "00",
+    seconds: "00",
+    label: "Upcoming",
+  })
 
   useEffect(() => {
-    if (!iso) {
-      setLabel("Time pending")
-      return
-    }
-
     const update = () => {
+      if (!iso) {
+        setCountdown({ days: "00", hours: "00", minutes: "00", seconds: "00", label: "Time pending" })
+        return
+      }
+
       const target = new Date(iso).getTime()
       if (Number.isNaN(target)) {
-        setLabel("Time pending")
+        setCountdown({ days: "00", hours: "00", minutes: "00", seconds: "00", label: "Time pending" })
         return
       }
 
       const difference = target - Date.now()
       if (difference <= 0) {
-        setLabel("Starting now")
+        setCountdown({ days: "00", hours: "00", minutes: "00", seconds: "00", label: "Starting now" })
         return
       }
 
-      const totalMinutes = Math.max(1, Math.floor(difference / 60000))
-      const days = Math.floor(totalMinutes / 1440)
-      const hours = Math.floor((totalMinutes % 1440) / 60)
-      const minutes = totalMinutes % 60
+      const totalSeconds = Math.floor(difference / 1000)
+      const days = Math.floor(totalSeconds / 86400)
+      const hours = Math.floor((totalSeconds % 86400) / 3600)
+      const minutes = Math.floor((totalSeconds % 3600) / 60)
+      const seconds = totalSeconds % 60
+      const pad = (value: number) => String(value).padStart(2, "0")
 
-      if (days > 0) setLabel(`${days}d ${hours}h`)
-      else if (hours > 0) setLabel(`${hours}h ${minutes}m`)
-      else setLabel(`${minutes}m`)
+      setCountdown({
+        days: pad(days),
+        hours: pad(hours),
+        minutes: pad(minutes),
+        seconds: pad(seconds),
+        label: "Starts in",
+      })
     }
 
     update()
-    const timer = window.setInterval(update, 30000)
+    const timer = window.setInterval(update, 1000)
     return () => window.clearInterval(timer)
   }, [iso])
 
-  return label
+  return countdown
 }
 
 export default function BearfitDashboardClient({
@@ -214,7 +225,7 @@ export default function BearfitDashboardClient({
   const primaryPackageMessage = primaryPackageAlert?.blockingReason || primaryPackageAlert?.message || null
   const nextBooking = upcomingBookings[0] ?? null
   const nextBookingStart = nextBooking?.start_at || nextBooking?.requested_start_at || null
-  const startsIn = useStartsIn(nextBookingStart)
+  const sessionCountdown = useSessionCountdown(nextBookingStart)
   const nextSessionVisual = nextBooking ? sessionVisualForType(nextBooking.session_type) : null
   const activityItems = [
     ...sessionLogs.map((log) => ({
@@ -324,7 +335,7 @@ export default function BearfitDashboardClient({
         </aside>
 
         <section className="min-w-0 flex-1">
-          <div className="mx-auto max-w-[1180px] px-4 py-5 md:px-6 lg:px-8 lg:py-7">
+          <div className="mx-auto max-w-[1180px] px-4 py-5 pb-28 md:px-6 lg:px-8 lg:py-7 lg:pb-7">
             <header className="flex items-center justify-between gap-4 border-b border-white/10 pb-5">
               <div className="flex min-w-0 items-center gap-4">
                 <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#24314b] text-sm font-extrabold text-[#ff7a1a] md:h-16 md:w-16">
@@ -342,8 +353,11 @@ export default function BearfitDashboardClient({
                 <button aria-label="Notifications coming soon" title="Notifications coming soon" className="rounded-2xl bg-[#24314b] p-3 text-white/45">
                   <Bell size={19} />
                 </button>
-                <button aria-label="Messages coming soon" title="Messages coming soon" className="rounded-2xl bg-[#24314b] p-3 text-white/45">
+                <button aria-label="Messages coming soon" title="Messages coming soon" className="hidden rounded-2xl bg-[#24314b] p-3 text-white/45 sm:inline-flex">
                   <MessageCircle size={19} />
+                </button>
+                <button onClick={handleSignOut} aria-label="Sign out" title="Sign out" className="rounded-2xl bg-[#24314b] p-3 text-white/60 lg:hidden">
+                  <LogOut size={19} />
                 </button>
               </div>
             </header>
@@ -374,8 +388,8 @@ export default function BearfitDashboardClient({
             ) : (
               <div className="overflow-hidden rounded-[26px] border border-[#30394a] bg-[#121212] shadow-2xl shadow-black/30">
                 <div className="p-4 md:p-6">
-                  <section className="flex flex-col gap-5 md:flex-row md:items-center">
-                    <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-[3px] border-[#ff7a1a] bg-[#25324a] text-2xl font-extrabold text-[#ff9b54]">
+                  <section className="flex flex-col gap-4 sm:flex-row sm:items-center md:gap-5">
+                    <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-[3px] border-[#ff7a1a] bg-[#25324a] text-xl font-extrabold text-[#ff9b54] md:h-24 md:w-24 md:text-2xl">
                       {profile?.avatar_url ? (
                         <img src={profile.avatar_url} alt={`${displayName} profile`} className="h-full w-full object-cover" />
                       ) : (
@@ -425,7 +439,7 @@ export default function BearfitDashboardClient({
 
                   <section className="mt-6">
                     <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-white/45">Your Stats</p>
-                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
                       <MetricCard label="Sessions Used" value={String(sessionsUsed)} sublabel="Completed sessions" />
                       <MetricCard label="Sessions Remaining" value={String(sessionsLeft)} sublabel="Available sessions" />
                       <MetricCard label="Total Sessions" value={String(totalSessions)} sublabel={displayPackageName} />
@@ -467,39 +481,58 @@ export default function BearfitDashboardClient({
                       </div>
                     ) : (
                       <>
-                        <article className="relative min-h-[330px] overflow-hidden rounded-[26px] border border-white/10 bg-black shadow-xl shadow-black/30 md:min-h-[360px]">
+                        <article className="relative min-h-[500px] overflow-hidden rounded-[26px] border border-white/10 bg-black shadow-xl shadow-black/30 md:min-h-[460px] lg:min-h-[430px]">
                           <img
                             src={nextSessionVisual.image}
                             alt=""
                             className="absolute inset-0 h-full w-full object-cover"
                             style={{ objectPosition: nextSessionVisual.position }}
                           />
-                          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/75 to-black/15" />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/15" />
+                          <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/75 to-black/25 lg:from-black lg:via-black/75 lg:to-black/5" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-black/20" />
 
-                          <div className="relative flex min-h-[330px] flex-col justify-between p-5 md:min-h-[360px] md:p-7">
-                            <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div className="relative flex min-h-[500px] flex-col justify-between p-5 md:min-h-[460px] md:p-7 lg:min-h-[430px] lg:p-8">
+                            <div className="flex items-center justify-between gap-3">
                               <span className="inline-flex rounded-full bg-[#ff7a1a] px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.1em] text-white">Confirmed</span>
-                              <div className="rounded-2xl border border-white/15 bg-black/45 px-4 py-2 text-right backdrop-blur-sm">
-                                <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/55">Starts in</p>
-                                <p className="mt-0.5 text-xl font-black text-[#ff9b54]">{startsIn}</p>
-                              </div>
+                              <span className="hidden rounded-full border border-white/15 bg-black/35 px-3 py-1.5 text-[11px] font-semibold text-white/65 backdrop-blur-sm sm:inline-flex">
+                                BearFit scheduled session
+                              </span>
                             </div>
 
-                            <div className="max-w-3xl">
-                              <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/55">Your next workout</p>
-                              <h4 className="mt-2 text-3xl font-black leading-none md:text-5xl">{formatSessionTitle(nextBooking.session_type)}</h4>
-                              <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/75 md:text-base">
-                                <span className="inline-flex items-center gap-2"><MapPin size={17} className="text-[#ff7a1a]" /> {nextBooking.branch}</span>
-                                <span className="inline-flex items-center gap-2"><Clock3 size={17} className="text-[#ff7a1a]" /> {formatDateTime(nextBookingStart)}</span>
+                            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end lg:gap-8">
+                              <div className="max-w-3xl">
+                                <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/55">Your next workout</p>
+                                <h4 className="mt-2 text-4xl font-black leading-[0.95] sm:text-5xl lg:text-6xl">{formatSessionTitle(nextBooking.session_type)}</h4>
+                                <div className="mt-5 grid gap-2 text-sm text-white/75 sm:flex sm:flex-wrap sm:gap-x-5 sm:gap-y-2 md:text-base">
+                                  <span className="inline-flex items-center gap-2"><MapPin size={17} className="text-[#ff7a1a]" /> {nextBooking.branch}</span>
+                                  <span className="inline-flex items-center gap-2"><Clock3 size={17} className="text-[#ff7a1a]" /> {formatDateTime(nextBookingStart)}</span>
+                                </div>
+                                <p className="mt-3 text-base font-extrabold text-[#ff9b54]">Coach {nextBooking.assigned_coach_user_id ? coachNames[nextBooking.assigned_coach_user_id] || "Coach assigned" : "Any available coach"}</p>
                               </div>
-                              <p className="mt-2 text-sm font-bold text-[#ff9b54]">Coach {nextBooking.assigned_coach_user_id ? coachNames[nextBooking.assigned_coach_user_id] || "Coach assigned" : "Any available coach"}</p>
 
-                              <div className="mt-6 flex flex-wrap items-center gap-3">
-                                <Link href="/member/schedule" className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-extrabold text-[#202020] transition hover:bg-white/90">
-                                  Session details <ChevronRight size={16} />
-                                </Link>
-                                <span className="rounded-full border border-white/15 bg-black/35 px-4 py-2.5 text-xs font-semibold text-white/70 backdrop-blur-sm">Check-in is completed by BearFit staff</span>
+                              <div className="lg:w-[360px]">
+                                <div className="rounded-[22px] border border-white/15 bg-black/45 p-3 backdrop-blur-md sm:p-4">
+                                  <div className="mb-3 flex items-center justify-between gap-3">
+                                    <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/55">{sessionCountdown.label}</p>
+                                    <Clock3 size={15} className="text-[#ff9b54]" />
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                                    <CountdownCell label="Days" value={sessionCountdown.days} />
+                                    <CountdownCell label="Hours" value={sessionCountdown.hours} />
+                                    <CountdownCell label="Minutes" value={sessionCountdown.minutes} />
+                                    <CountdownCell label="Seconds" value={sessionCountdown.seconds} />
+                                  </div>
+                                </div>
+
+                                <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+                                  <Link href="/member/schedule" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-extrabold text-[#202020] transition hover:bg-white/90">
+                                    Session details <ChevronRight size={16} />
+                                  </Link>
+                                  <Link href="/member/schedule" className="inline-flex min-h-12 items-center justify-center rounded-full border border-white/15 bg-black/35 px-5 py-3 text-sm font-bold text-white/80 backdrop-blur-sm transition hover:bg-black/50">
+                                    Manage booking
+                                  </Link>
+                                </div>
+                                <p className="mt-2 text-center text-[11px] font-medium text-white/45">Check-in is completed by BearFit staff.</p>
                               </div>
                             </div>
                           </div>
@@ -541,9 +574,9 @@ export default function BearfitDashboardClient({
                       {activityItems.length === 0 ? (
                         <EmptyState text="Your completed sessions and payments will appear here." />
                       ) : (
-                        <div className="divide-y divide-white/[0.06]">
+                        <div className="space-y-2 sm:space-y-0 sm:divide-y sm:divide-white/[0.06]">
                           {activityItems.map((item) => (
-                            <div key={item.id} className="grid gap-3 py-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
+                            <div key={item.id} className="grid gap-3 rounded-2xl border border-white/[0.05] bg-white/[0.025] px-3 py-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0">
                               <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${item.kind === "session" ? "bg-[#ff7a1a] text-white" : "bg-emerald-500/15 text-emerald-300"}`}>
                                 {item.kind === "session" ? <Dumbbell size={20} /> : <ReceiptText size={20} />}
                               </div>
@@ -591,12 +624,18 @@ export default function BearfitDashboardClient({
               </div>
             )}
 
-            <div className="mt-5 flex flex-wrap justify-center gap-2 lg:hidden">
-              <Link href="/member/dashboard" className="rounded-full bg-[#ff7a1a] px-4 py-2.5 text-sm font-semibold">Home</Link>
-              <Link href="/member/schedule" className="rounded-full bg-[#25324a] px-4 py-2.5 text-sm font-semibold">Schedule</Link>
-              <Link href="/member/profile" className="rounded-full bg-[#25324a] px-4 py-2.5 text-sm font-semibold">Profile</Link>
-              <button onClick={handleSignOut} className="rounded-full bg-[#25324a] px-4 py-2.5 text-sm font-semibold">Sign out</button>
-            </div>
+            <nav
+              aria-label="Mobile app navigation"
+              className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#07101f]/95 px-2 pt-2 backdrop-blur-xl lg:hidden"
+              style={{ paddingBottom: "max(env(safe-area-inset-bottom), 10px)" }}
+            >
+              <div className="mx-auto grid max-w-lg grid-cols-4 gap-1">
+                <MobileNavItem href="/member/dashboard" label="Home" icon={Home} active />
+                <MobileNavItem href="/member/schedule" label="Schedule" icon={CalendarDays} />
+                <MobileNavItem href="#payments" label="Payments" icon={CreditCard} />
+                <MobileNavItem href="/member/profile" label="Profile" icon={UserIcon} />
+              </div>
+            </nav>
           </div>
         </section>
       </div>
@@ -604,11 +643,52 @@ export default function BearfitDashboardClient({
   )
 }
 
+function CountdownCell({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.07] px-2 py-3 text-center">
+      <p className="text-2xl font-black tabular-nums text-white sm:text-3xl lg:text-2xl">{value}</p>
+      <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.14em] text-white/45">{label}</p>
+    </div>
+  )
+}
+
+function MobileNavItem({
+  href,
+  label,
+  icon: Icon,
+  active = false,
+}: {
+  href: string
+  label: string
+  icon: typeof Home
+  active?: boolean
+}) {
+  const className = `flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-semibold transition ${
+    active ? "bg-[#ff7a1a] text-white" : "text-white/55 active:bg-white/10 active:text-white"
+  }`
+
+  if (href.startsWith("#")) {
+    return (
+      <a href={href} className={className}>
+        <Icon size={18} />
+        <span>{label}</span>
+      </a>
+    )
+  }
+
+  return (
+    <Link href={href} className={className}>
+      <Icon size={18} />
+      <span>{label}</span>
+    </Link>
+  )
+}
+
 function MetricCard({ label, value, sublabel }: { label: string; value: string; sublabel: string }) {
   return (
-    <div className="rounded-[20px] border border-white/[0.04] bg-[#242424] p-5">
-      <p className="text-sm text-white/45">{label}</p>
-      <p className="mt-1 break-words text-3xl font-black tracking-tight">{value}</p>
+    <div className="min-w-0 rounded-[20px] border border-white/[0.04] bg-[#242424] p-4 md:p-5">
+      <p className="text-xs text-white/45 sm:text-sm">{label}</p>
+      <p className="mt-1 break-words text-2xl font-black tracking-tight sm:text-3xl">{value}</p>
       <p className="mt-2 text-xs text-white/45">{sublabel}</p>
     </div>
   )
