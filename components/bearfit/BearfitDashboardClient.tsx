@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import type {
   BookingRow,
@@ -14,12 +15,16 @@ import {
   Activity,
   Bell,
   CalendarDays,
+  ChevronRight,
+  Clock3,
   CreditCard,
+  Dumbbell,
   Home,
   LogOut,
   MapPin,
   MessageCircle,
   MoreHorizontal,
+  ReceiptText,
   User as UserIcon,
   Wallet,
 } from "lucide-react"
@@ -99,6 +104,75 @@ function alertPriority(alert: PackageAlert) {
   return 0
 }
 
+function formatSessionTitle(sessionType: string) {
+  const normalized = sessionType.toLowerCase()
+  if (normalized === "pilates_group") return "Pilates Group Session"
+  if (normalized === "pilates_1on1") return "Pilates 1-on-1 Session"
+  if (normalized.includes("boxing")) return "Boxing Session"
+  if (normalized.includes("cardio")) return "Cardio Session"
+  if (normalized.includes("weight") || normalized.includes("strength")) return "Weights Session"
+  if (normalized === "fitness") return "Fitness Session"
+  return `${sessionType.replaceAll("_", " ")} Session`
+}
+
+function sessionVisualForType(sessionType: string) {
+  const normalized = sessionType.toLowerCase()
+
+  if (normalized.includes("pilates")) {
+    return { image: "/onboarding/better-function1.jpg", position: "center 38%" }
+  }
+
+  if (normalized.includes("cardio") || normalized.includes("mobility")) {
+    return { image: "/better-form.png", position: "center 32%" }
+  }
+
+  if (normalized.includes("boxing")) {
+    return { image: "/onboarding/better-function.jpg", position: "center 35%" }
+  }
+
+  return { image: "/onboarding/better-fintness1.jpg", position: "center 34%" }
+}
+
+function useStartsIn(iso: string | null) {
+  const [label, setLabel] = useState("Upcoming")
+
+  useEffect(() => {
+    if (!iso) {
+      setLabel("Time pending")
+      return
+    }
+
+    const update = () => {
+      const target = new Date(iso).getTime()
+      if (Number.isNaN(target)) {
+        setLabel("Time pending")
+        return
+      }
+
+      const difference = target - Date.now()
+      if (difference <= 0) {
+        setLabel("Starting now")
+        return
+      }
+
+      const totalMinutes = Math.max(1, Math.floor(difference / 60000))
+      const days = Math.floor(totalMinutes / 1440)
+      const hours = Math.floor((totalMinutes % 1440) / 60)
+      const minutes = totalMinutes % 60
+
+      if (days > 0) setLabel(`${days}d ${hours}h`)
+      else if (hours > 0) setLabel(`${hours}h ${minutes}m`)
+      else setLabel(`${minutes}m`)
+    }
+
+    update()
+    const timer = window.setInterval(update, 30000)
+    return () => window.clearInterval(timer)
+  }, [iso])
+
+  return label
+}
+
 export default function BearfitDashboardClient({
   userEmail,
   userFullName,
@@ -128,6 +202,8 @@ export default function BearfitDashboardClient({
   const membershipId = member?.membership_id || member?.member_code || "Not assigned"
   const branch = member?.branch || profile?.branch || "Not assigned"
   const packageName = member?.package_name || member?.package_type || "No package assigned"
+  const latestPaidPackage = payments.find((payment) => payment.status?.toLowerCase() === "paid" && payment.package_name)?.package_name
+  const displayPackageName = /^legacy/i.test(packageName) && latestPaidPackage ? latestPaidPackage : packageName
   const membershipStatus = member?.membership_status || member?.status || "Not assigned"
   const paymentStatus = member?.payment_status || "Not recorded"
   const sessionsUsed = member?.sessions_used ?? 0
@@ -136,6 +212,34 @@ export default function BearfitDashboardClient({
   const progress = totalSessions > 0 ? Math.min((sessionsUsed / totalSessions) * 100, 100) : 0
   const primaryPackageAlert = [...packageAlerts].sort((a, b) => alertPriority(b) - alertPriority(a))[0] ?? null
   const primaryPackageMessage = primaryPackageAlert?.blockingReason || primaryPackageAlert?.message || null
+  const nextBooking = upcomingBookings[0] ?? null
+  const nextBookingStart = nextBooking?.start_at || nextBooking?.requested_start_at || null
+  const startsIn = useStartsIn(nextBookingStart)
+  const nextSessionVisual = nextBooking ? sessionVisualForType(nextBooking.session_type) : null
+  const activityItems = [
+    ...sessionLogs.map((log) => ({
+      id: `session-${log.id}`,
+      kind: "session" as const,
+      timestamp: log.trained_at,
+      title: "Training session",
+      detail: log.notes || branch,
+      amount: null as number | null,
+      sessionsLeft: log.sessions_left_after,
+      status: null as string | null,
+    })),
+    ...payments.map((payment) => ({
+      id: `payment-${payment.id}`,
+      kind: "payment" as const,
+      timestamp: payment.paid_at || payment.payment_date || payment.created_at,
+      title: payment.package_name || payment.stage || "Membership payment",
+      detail: payment.payment_type || "BearFit payment",
+      amount: payment.amount,
+      sessionsLeft: null as number | null,
+      status: payment.status,
+    })),
+  ]
+    .sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime())
+    .slice(0, 7)
   void packageEligibility
 
   return (
@@ -281,7 +385,7 @@ export default function BearfitDashboardClient({
 
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-3">
-                        <h2 className="text-2xl font-extrabold md:text-3xl">{packageName}</h2>
+                        <h2 className="text-2xl font-extrabold md:text-3xl">{displayPackageName}</h2>
                         <span className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${statusClass(membershipStatus)}`}>
                           {membershipStatus}
                         </span>
@@ -324,7 +428,7 @@ export default function BearfitDashboardClient({
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                       <MetricCard label="Sessions Used" value={String(sessionsUsed)} sublabel="Completed sessions" />
                       <MetricCard label="Sessions Remaining" value={String(sessionsLeft)} sublabel="Available sessions" />
-                      <MetricCard label="Total Sessions" value={String(totalSessions)} sublabel={packageName} />
+                      <MetricCard label="Total Sessions" value={String(totalSessions)} sublabel={displayPackageName} />
                       <MetricCard label="Total Paid" value={formatMoney(member.total_paid)} sublabel={`Status: ${paymentStatus}`} />
                     </div>
                   </section>
@@ -339,52 +443,87 @@ export default function BearfitDashboardClient({
 
                   <section className="mt-7">
                     <div className="mb-4 flex items-center justify-between gap-3">
-                      <h3 className="text-xl font-extrabold md:text-2xl">Upcoming Sessions</h3>
+                      <div>
+                        <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-[#ff8b38]">Next Session</p>
+                        <h3 className="mt-1 text-xl font-extrabold md:text-2xl">Upcoming Sessions</h3>
+                      </div>
                       <Link href="/member/schedule" className="rounded-full bg-[#ff7a1a] px-4 py-2 text-xs font-bold transition hover:bg-[#ff8b38] md:text-sm">
                         Manage Schedule
                       </Link>
                     </div>
 
-                    {upcomingBookings.length === 0 ? (
-                      <div className="rounded-[24px] border border-dashed border-white/15 bg-[#191919] p-7 text-center">
-                        <CalendarDays className="mx-auto text-[#ff7a1a]" size={30} />
-                        <h4 className="mt-3 text-lg font-semibold">No confirmed sessions yet</h4>
-                        <p className="mx-auto mt-2 max-w-lg text-sm text-white/50">Choose an available slot or send a custom request from Schedule.</p>
-                        <Link href="/member/schedule" className="mt-4 inline-flex rounded-full bg-white/10 px-5 py-2 text-sm font-semibold hover:bg-white/15">
-                          Book a Session
-                        </Link>
+                    {!nextBooking || !nextSessionVisual ? (
+                      <div className="relative min-h-[260px] overflow-hidden rounded-[24px] border border-white/10 bg-[#191919]">
+                        <img src="/better-form.png" alt="" className="absolute inset-0 h-full w-full object-cover opacity-25" style={{ objectPosition: "center 30%" }} />
+                        <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/80 to-black/45" />
+                        <div className="relative flex min-h-[260px] flex-col items-center justify-center px-6 py-8 text-center">
+                          <CalendarDays className="text-[#ff7a1a]" size={32} />
+                          <h4 className="mt-3 text-xl font-bold">No confirmed sessions yet</h4>
+                          <p className="mx-auto mt-2 max-w-lg text-sm text-white/55">Once your next session is confirmed, its session image, coach, branch, date, time, and countdown will appear here.</p>
+                          <Link href="/member/schedule" className="mt-5 inline-flex rounded-full bg-white px-5 py-2.5 text-sm font-extrabold text-[#202020] transition hover:bg-white/90">
+                            Book a Session
+                          </Link>
+                        </div>
                       </div>
                     ) : (
-                      <div className="grid gap-4">
-                        {upcomingBookings.map((booking) => {
-                          const coachName = booking.assigned_coach_user_id
-                            ? coachNames[booking.assigned_coach_user_id] || "Coach assigned"
-                            : "Any available coach"
+                      <>
+                        <article className="relative min-h-[330px] overflow-hidden rounded-[26px] border border-white/10 bg-black shadow-xl shadow-black/30 md:min-h-[360px]">
+                          <img
+                            src={nextSessionVisual.image}
+                            alt=""
+                            className="absolute inset-0 h-full w-full object-cover"
+                            style={{ objectPosition: nextSessionVisual.position }}
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/75 to-black/15" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/15" />
 
-                          return (
-                            <div key={booking.id} className="relative overflow-hidden rounded-[24px] border border-white/10 bg-[#101920] p-5 md:p-6">
-                              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(255,122,26,0.24),transparent_34%),linear-gradient(115deg,rgba(5,16,28,0.95),rgba(18,18,18,0.76))]" />
-                              <div className="relative flex flex-col justify-between gap-5 md:flex-row md:items-end">
-                                <div>
-                                  <span className="rounded-full bg-[#ff7a1a] px-3 py-1 text-[11px] font-extrabold uppercase tracking-wide text-white">Upcoming</span>
-                                  <h4 className="mt-3 text-2xl font-black capitalize md:text-3xl">{booking.session_type.replaceAll("_", " ")} Session</h4>
-                                  <p className="mt-2 text-sm text-white/60">{booking.branch} • {formatDateTime(booking.start_at || booking.requested_start_at)}</p>
-                                  <p className="mt-1 text-sm font-semibold text-[#ff9b54]">Coach {coachName}</p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <span className="rounded-full bg-emerald-500/15 px-4 py-2 text-xs font-semibold text-emerald-300">Confirmed</span>
-                                  <Link href="/member/schedule" className="rounded-full bg-white/10 px-4 py-2 text-sm font-semibold hover:bg-white/15">Details</Link>
-                                </div>
+                          <div className="relative flex min-h-[330px] flex-col justify-between p-5 md:min-h-[360px] md:p-7">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <span className="inline-flex rounded-full bg-[#ff7a1a] px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.1em] text-white">Confirmed</span>
+                              <div className="rounded-2xl border border-white/15 bg-black/45 px-4 py-2 text-right backdrop-blur-sm">
+                                <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/55">Starts in</p>
+                                <p className="mt-0.5 text-xl font-black text-[#ff9b54]">{startsIn}</p>
                               </div>
                             </div>
-                          )
-                        })}
-                      </div>
+
+                            <div className="max-w-3xl">
+                              <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/55">Your next workout</p>
+                              <h4 className="mt-2 text-3xl font-black leading-none md:text-5xl">{formatSessionTitle(nextBooking.session_type)}</h4>
+                              <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/75 md:text-base">
+                                <span className="inline-flex items-center gap-2"><MapPin size={17} className="text-[#ff7a1a]" /> {nextBooking.branch}</span>
+                                <span className="inline-flex items-center gap-2"><Clock3 size={17} className="text-[#ff7a1a]" /> {formatDateTime(nextBookingStart)}</span>
+                              </div>
+                              <p className="mt-2 text-sm font-bold text-[#ff9b54]">Coach {nextBooking.assigned_coach_user_id ? coachNames[nextBooking.assigned_coach_user_id] || "Coach assigned" : "Any available coach"}</p>
+
+                              <div className="mt-6 flex flex-wrap items-center gap-3">
+                                <Link href="/member/schedule" className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-extrabold text-[#202020] transition hover:bg-white/90">
+                                  Session details <ChevronRight size={16} />
+                                </Link>
+                                <span className="rounded-full border border-white/15 bg-black/35 px-4 py-2.5 text-xs font-semibold text-white/70 backdrop-blur-sm">Check-in is completed by BearFit staff</span>
+                              </div>
+                            </div>
+                          </div>
+                        </article>
+
+                        {upcomingBookings.length > 1 && (
+                          <div className="mt-3 grid gap-2 md:grid-cols-2">
+                            {upcomingBookings.slice(1).map((booking) => (
+                              <Link key={booking.id} href="/member/schedule" className="flex items-center justify-between gap-3 rounded-2xl border border-white/[0.07] bg-[#1b1b1b] px-4 py-3 transition hover:bg-[#202020]">
+                                <div className="min-w-0">
+                                  <p className="truncate font-bold">{formatSessionTitle(booking.session_type)}</p>
+                                  <p className="mt-1 truncate text-xs text-white/45">{formatDateTime(booking.start_at || booking.requested_start_at)} · {booking.branch}</p>
+                                </div>
+                                <ChevronRight className="shrink-0 text-[#ff7a1a]" size={18} />
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+                      </>
                     )}
                   </section>
 
-                  <section className="mt-7 rounded-[24px] bg-[#171717] p-4 md:p-5">
-                    <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-4">
+                  <section id="payments" className="mt-7 overflow-hidden rounded-[24px] border border-white/[0.04] bg-[#171717]">
+                    <div className="flex items-center justify-between gap-3 px-4 pt-5 md:px-5">
                       <div>
                         <h3 className="text-xl font-extrabold">Member Activity</h3>
                         <p className="mt-1 text-sm text-white/40">Your real session and payment history</p>
@@ -392,69 +531,62 @@ export default function BearfitDashboardClient({
                       <Activity size={22} className="text-[#ff7a1a]" />
                     </div>
 
-                    <div className="grid gap-5 pt-5 xl:grid-cols-2">
-                      <div>
-                        <div className="mb-3 flex items-center justify-between">
-                          <h4 className="font-bold">Recent Session Activity</h4>
-                          <Activity size={17} className="text-white/35" />
-                        </div>
-                        {sessionLogs.length === 0 ? (
-                          <EmptyState text="No completed sessions have been recorded yet." />
-                        ) : (
-                          <div className="space-y-2">
-                            {sessionLogs.slice(0, 5).map((log) => (
-                              <div key={log.id} className="grid gap-2 rounded-2xl bg-white/[0.035] px-4 py-3 sm:grid-cols-[1fr_auto] sm:items-center">
-                                <div>
-                                  <p className="font-semibold">Training session</p>
-                                  <p className="mt-1 text-xs text-white/45">{log.notes || formatDateTime(log.trained_at)}</p>
-                                </div>
-                                <div className="text-right">
-                                  <p className="text-xs text-white/45">{formatDateTime(log.trained_at)}</p>
-                                  <p className="mt-1 text-sm font-bold text-[#ff9b54]">{log.sessions_left_after} left</p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                    <div className="mt-4 grid grid-cols-3 border-y border-white/10 px-3 text-center text-xs font-semibold text-white/45 md:px-5">
+                      <span className="border-b-2 border-[#ff7a1a] py-3 text-white">Activity Log</span>
+                      <span className="py-3">Sessions</span>
+                      <span className="py-3">Payments</span>
+                    </div>
 
-                      <div id="payments">
-                        <div className="mb-3 flex items-center justify-between">
-                          <h4 className="font-bold">Recent Payments</h4>
-                          <Wallet size={17} className="text-white/35" />
-                        </div>
-                        {payments.length === 0 ? (
-                          <EmptyState text="No payment records are available yet." />
-                        ) : (
-                          <div className="space-y-2">
-                            {payments.slice(0, 5).map((payment) => (
-                              <div key={payment.id} className="grid gap-2 rounded-2xl bg-white/[0.035] px-4 py-3 sm:grid-cols-[1fr_auto] sm:items-center">
-                                <div>
-                                  <p className="font-semibold">{payment.package_name || payment.stage || "Membership payment"}</p>
-                                  <p className="mt-1 text-xs text-white/45">{payment.payment_type || formatDateTime(payment.paid_at || payment.payment_date || payment.created_at)}</p>
-                                </div>
-                                <div className="text-right">
-                                  <p className="font-bold">{formatMoney(payment.amount)}</p>
-                                  <span className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize ${statusClass(payment.status)}`}>
-                                    {payment.status}
-                                  </span>
-                                </div>
+                    <div className="p-3 md:p-5">
+                      {activityItems.length === 0 ? (
+                        <EmptyState text="Your completed sessions and payments will appear here." />
+                      ) : (
+                        <div className="divide-y divide-white/[0.06]">
+                          {activityItems.map((item) => (
+                            <div key={item.id} className="grid gap-3 py-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
+                              <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${item.kind === "session" ? "bg-[#ff7a1a] text-white" : "bg-emerald-500/15 text-emerald-300"}`}>
+                                {item.kind === "session" ? <Dumbbell size={20} /> : <ReceiptText size={20} />}
                               </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                              <div className="min-w-0">
+                                <p className="font-bold">{item.title}</p>
+                                <p className={`mt-1 text-xs font-semibold ${item.kind === "session" ? "text-[#ff9b54]" : "text-emerald-400"}`}>
+                                  {item.kind === "session" ? "Session used" : "Payment received"}
+                                </p>
+                                <p className="mt-1 truncate text-xs text-white/35">{item.detail}</p>
+                              </div>
+                              <div className="text-left sm:text-right">
+                                <p className="text-xs text-white/40">{formatDateTime(item.timestamp)}</p>
+                                {item.kind === "session" ? (
+                                  <p className="mt-1 font-bold text-[#ff9b54]">{item.sessionsLeft} left</p>
+                                ) : (
+                                  <>
+                                    <p className="mt-1 font-bold">{formatMoney(item.amount)}</p>
+                                    {item.status && <span className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold capitalize ${statusClass(item.status)}`}>{item.status}</span>}
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </section>
 
-                  <section className="mt-7 overflow-hidden rounded-[24px] border border-orange-300/20 bg-[radial-gradient(circle_at_75%_35%,rgba(255,255,255,0.16),transparent_20%),linear-gradient(110deg,#ff6b0a,#ff8a2a)] p-6 md:p-8">
-                    <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-white/75">Schedule</p>
-                    <h3 className="mt-2 text-2xl font-black md:text-3xl">Book your next session</h3>
-                    <p className="mt-2 max-w-2xl text-sm text-white/80 md:text-base">View available BearFit slots, choose your coach, or send a custom session request.</p>
-                    <Link href="/member/schedule" className="mt-5 inline-flex rounded-full bg-white px-5 py-2.5 text-sm font-extrabold text-[#202020] transition hover:bg-white/90">
-                      Open Schedule
-                    </Link>
-                  </section>
+                  <div className="mt-7">
+                    <h3 className="mb-3 text-lg font-extrabold">Updates & Promos</h3>
+                    <section className="relative min-h-[250px] overflow-hidden rounded-[24px] border border-orange-300/20">
+                      <img src="/onboarding/better-form1.jpg" alt="" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: "center 38%" }} />
+                      <div className="absolute inset-0 bg-gradient-to-r from-[#ff6b0a]/95 via-[#ff7316]/90 to-[#ff8a2a]/75" />
+                      <div className="relative p-6 md:p-8">
+                        <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-white/80">Schedule</p>
+                        <h3 className="mt-2 text-2xl font-black md:text-3xl">Book your next session</h3>
+                        <p className="mt-2 max-w-2xl text-sm text-white/85 md:text-base">View available BearFit slots, choose your coach, or send a custom session request.</p>
+                        <Link href="/member/schedule" className="mt-5 inline-flex rounded-full bg-white px-5 py-2.5 text-sm font-extrabold text-[#202020] transition hover:bg-white/90">
+                          Open Schedule
+                        </Link>
+                      </div>
+                    </section>
+                  </div>
                 </div>
               </div>
             )}
