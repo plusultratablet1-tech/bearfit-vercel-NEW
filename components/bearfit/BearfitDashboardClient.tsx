@@ -7,6 +7,8 @@ import type {
   PaymentRow,
   ProfileRow,
   SessionLogRow,
+  BookingRow,
+  PackageAlert,
 } from "@/lib/member-account"
 import {
   Activity,
@@ -30,6 +32,9 @@ type Props = {
   profile: ProfileRow | null
   sessionLogs: SessionLogRow[]
   payments: PaymentRow[]
+  upcomingBookings: BookingRow[]
+  packageEligibility: Record<string, unknown>
+  packageAlerts: PackageAlert[]
   loadError: string | null
 }
 
@@ -87,6 +92,9 @@ export default function BearfitDashboardClient({
   profile,
   sessionLogs,
   payments,
+  upcomingBookings,
+  packageEligibility,
+  packageAlerts,
   loadError,
 }: Props) {
   const handleSignOut = async () => {
@@ -111,6 +119,16 @@ export default function BearfitDashboardClient({
   const sessionsLeft = member?.sessions_left ?? 0
   const totalSessions = member?.total_sessions ?? 0
   const progress = totalSessions > 0 ? Math.min((sessionsUsed / totalSessions) * 100, 100) : 0
+  const alertPriority = (alert: PackageAlert) => {
+    const copy = `${alert.blockingReason ?? ""} ${alert.message ?? ""}`
+    if (/Payment Due|No sessions|expired/i.test(copy)) return 3
+    if (/Last Session/i.test(copy)) return 2
+    if (/Renewal Soon/i.test(copy)) return 1
+    return 0
+  }
+  const primaryPackageAlert = [...packageAlerts].sort((a, b) => alertPriority(b) - alertPriority(a))[0] ?? null
+  const primaryPackageMessage = primaryPackageAlert?.blockingReason || primaryPackageAlert?.message || null
+  void packageEligibility
 
   return (
     <main className="min-h-screen bg-[#020b1c] text-white">
@@ -151,11 +169,10 @@ export default function BearfitDashboardClient({
               )
             })}
 
-            <div className="flex items-center gap-3 rounded-2xl px-4 py-4 text-white/35">
+            <Link href="/member/schedule" className="flex items-center gap-3 rounded-2xl px-4 py-4 text-white/80 hover:bg-white/5">
               <CalendarDays size={18} />
               <span className="font-medium">Schedule</span>
-              <span className="ml-auto text-[10px] uppercase">Soon</span>
-            </div>
+            </Link>
             <a
               href="#payments"
               className="flex items-center gap-3 rounded-2xl px-4 py-4 text-white/80 hover:bg-white/5"
@@ -307,15 +324,46 @@ export default function BearfitDashboardClient({
                 </section>
 
                 <section className="mb-8">
-                  <h3 className="mb-4 text-2xl font-bold">Upcoming Sessions</h3>
-                  <div className="rounded-[28px] border border-dashed border-white/15 bg-[#191919] p-7 text-center">
-                    <CalendarDays className="mx-auto text-[#ff7a1a]" size={30} />
-                    <h4 className="mt-3 text-lg font-semibold">No scheduled sessions yet</h4>
-                    <p className="mx-auto mt-2 max-w-lg text-sm text-white/50">
-                      Scheduling is not connected to member accounts yet. When that feature is added,
-                      your next confirmed session will appear here.
-                    </p>
+                  {primaryPackageMessage && (
+                    <div className={`mb-4 rounded-2xl border px-5 py-4 ${alertPriority(primaryPackageAlert!) >= 2 ? "border-orange-400/35 bg-orange-400/10 text-orange-100" : "border-amber-300/30 bg-amber-300/10 text-amber-100"}`}>
+                      <p className="text-xs font-bold uppercase tracking-[0.16em]">Package notice</p>
+                      <p className="mt-1 font-semibold">{primaryPackageMessage}</p>
+                      <p className="mt-1 text-xs opacity-70">Payment Due, Renewal Soon, and Last Session notices are calculated from your current package status.</p>
+                    </div>
+                  )}
+
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <h3 className="text-2xl font-bold">Upcoming Sessions</h3>
+                    <Link href="/member/schedule" className="rounded-full bg-[#ff7a1a] px-4 py-2 text-sm font-semibold">Manage Schedule</Link>
                   </div>
+
+                  {upcomingBookings.length === 0 ? (
+                    <div className="rounded-[28px] border border-dashed border-white/15 bg-[#191919] p-7 text-center">
+                      <CalendarDays className="mx-auto text-[#ff7a1a]" size={30} />
+                      <h4 className="mt-3 text-lg font-semibold">No confirmed sessions yet</h4>
+                      <p className="mx-auto mt-2 max-w-lg text-sm text-white/50">Choose an available slot or send a custom request from Schedule.</p>
+                      <Link href="/member/schedule" className="mt-4 inline-flex rounded-full bg-white/10 px-5 py-2 text-sm font-semibold">Book a Session</Link>
+                    </div>
+                  ) : (
+                    <div className="grid gap-4">
+                      {upcomingBookings.map((booking) => (
+                        <div key={booking.id} className="rounded-[28px] border border-white/10 bg-gradient-to-r from-[#191919] to-[#232323] p-5 md:p-6">
+                          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+                            <div>
+                              <span className="rounded-full bg-[#ff7a1a]/15 px-3 py-1 text-xs font-bold uppercase text-[#ff9b54]">{booking.status}</span>
+                              <h4 className="mt-3 text-xl font-bold capitalize">{booking.session_type.replaceAll("_", " ")} Session</h4>
+                              <p className="mt-1 text-sm text-white/60">{booking.assigned_coach_user_id ? "Coach assigned" : "Any available coach"} • {booking.branch}</p>
+                              <p className="mt-1 text-sm text-white/75">{formatDateTime(booking.start_at || booking.requested_start_at)}</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="rounded-full bg-emerald-500/15 px-4 py-2 text-xs font-semibold text-emerald-300">Confirmed</span>
+                              <Link href="/member/schedule" className="rounded-full bg-[#25324a] px-4 py-2 text-sm font-semibold">Manage</Link>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </section>
 
                 <section className="mb-8 rounded-[28px] bg-[#171717] p-4 md:p-6">
@@ -384,9 +432,8 @@ export default function BearfitDashboardClient({
             )}
 
             <div className="mt-5 flex justify-center gap-3 lg:hidden">
-              <Link href="/member/profile" className="rounded-full bg-[#25324a] px-5 py-3 text-sm font-semibold text-white">
-                Profile
-              </Link>
+              <Link href="/member/profile" className="rounded-full bg-[#25324a] px-5 py-3 text-sm font-semibold text-white">Profile</Link>
+              <Link href="/member/schedule" className="rounded-full bg-[#25324a] px-5 py-3 text-sm font-semibold text-white">Schedule</Link>
               <button onClick={handleSignOut} className="rounded-full bg-[#ff7a1a] px-5 py-3 text-sm font-semibold text-white">
                 Sign out
               </button>

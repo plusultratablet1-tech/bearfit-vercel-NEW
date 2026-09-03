@@ -29,6 +29,9 @@ export default async function MemberDashboardPage() {
       profile={account.profile}
       sessionLogs={account.sessionLogs}
       payments={account.payments}
+      upcomingBookings={account.upcomingBookings}
+      packageEligibility={account.packageEligibility}
+      packageAlerts={account.packageAlerts}
       loadError={account.loadError}
     />
   )

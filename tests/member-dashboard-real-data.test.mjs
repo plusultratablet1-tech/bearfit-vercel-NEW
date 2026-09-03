@@ -47,3 +47,16 @@ test('/member/profile uses the shared server-side member account loader', () => 
   assert.match(profilePage, /payment_status/)
   assert.match(profilePage, /member\.member_code/)
 })
+
+test('member dashboard renders real upcoming bookings and package alerts', () => {
+  assert.match(dashboardPage, /upcomingBookings=/)
+  assert.match(dashboardPage, /packageEligibility=/)
+  assert.match(dashboardPage, /packageAlerts=/)
+  assert.match(dashboardClient, /\/member\/schedule/)
+  assert.match(dashboardClient, /upcomingBookings/)
+  assert.match(dashboardClient, /packageAlerts/)
+  assert.match(dashboardClient, /Payment Due/)
+  assert.match(dashboardClient, /Renewal Soon/)
+  assert.match(dashboardClient, /Last Session/)
+  assert.doesNotMatch(dashboardClient, /Scheduling is not connected to member accounts yet/i)
+})

@@ -6,6 +6,8 @@ import type {
   PaymentRow,
   ProfileRow,
   SessionLogRow,
+  BookingRow,
+  PackageAlert,
 } from "@/lib/member-account"
 
 interface MemberDashboardPageClientProps {
@@ -15,6 +17,9 @@ interface MemberDashboardPageClientProps {
   profile: ProfileRow | null
   sessionLogs: SessionLogRow[]
   payments: PaymentRow[]
+  upcomingBookings: BookingRow[]
+  packageEligibility: Record<string, unknown>
+  packageAlerts: PackageAlert[]
   loadError: string | null
 }
 
