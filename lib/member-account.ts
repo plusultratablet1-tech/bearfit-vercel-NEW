@@ -15,6 +15,7 @@ export type MemberAccountData = {
   payments: PaymentRow[]
   sessionLogs: SessionLogRow[]
   upcomingBookings: BookingRow[]
+  coachNames: Record<string, string>
   packageEligibility: Record<string, unknown>
   packageAlerts: PackageAlert[]
   loadError: string | null
@@ -46,6 +47,7 @@ export async function loadMemberAccountData(userId: string): Promise<MemberAccou
       payments: [],
       sessionLogs: [],
       upcomingBookings: [],
+      coachNames: {},
       packageEligibility: {},
       packageAlerts: [],
       loadError: "We couldn't load your membership details right now.",
@@ -59,6 +61,7 @@ export async function loadMemberAccountData(userId: string): Promise<MemberAccou
       payments: [],
       sessionLogs: [],
       upcomingBookings: [],
+      coachNames: {},
       packageEligibility: {},
       packageAlerts: [],
       loadError: null,
@@ -96,6 +99,20 @@ export async function loadMemberAccountData(userId: string): Promise<MemberAccou
     console.error("Failed to load BearFit payments", paymentsResult.error)
   }
 
+  const upcomingBookings = (bookingsResult.data ?? []) as BookingRow[]
+  const coachIds = new Set(upcomingBookings.map((booking) => booking.assigned_coach_user_id).filter((id): id is string => Boolean(id)))
+  const coachNames: Record<string, string> = {}
+  if (coachIds.size > 0) {
+    const { data: coachDirectory, error: coachError } = await supabase.rpc("member_coach_directory")
+    if (coachError) {
+      console.error("Failed to load BearFit coach names", coachError)
+    } else {
+      for (const coach of coachDirectory ?? []) {
+        if (coachIds.has(coach.id)) coachNames[coach.id] = coach.full_name
+      }
+    }
+  }
+
   const packageEligibility: Record<string, unknown> = {}
   const packageAlerts: PackageAlert[] = []
   for (const serviceCategory of ["fitness", "pilates_group", "pilates_1on1"]) {
@@ -103,7 +120,15 @@ export async function loadMemberAccountData(userId: string): Promise<MemberAccou
     if (data && typeof data === "object" && !Array.isArray(data)) {
       packageEligibility[serviceCategory] = data
       const item = data as Record<string, unknown>
-      if (item.warning_message || item.blocking_reason) packageAlerts.push({ serviceCategory, warningLevel: item.warning_level as string | null, message: item.warning_message as string | null, blockingReason: item.blocking_reason as string | null })
+      const hasPackage = Boolean(item.member_package_id)
+      if (item.warning_message || (hasPackage && item.blocking_reason)) {
+        packageAlerts.push({
+          serviceCategory,
+          warningLevel: item.warning_level as string | null,
+          message: item.warning_message as string | null,
+          blockingReason: item.blocking_reason as string | null,
+        })
+      }
     }
   }
 
@@ -112,7 +137,8 @@ export async function loadMemberAccountData(userId: string): Promise<MemberAccou
     profile,
     sessionLogs: (sessionsResult.data ?? []) as SessionLogRow[],
     payments: (paymentsResult.data ?? []) as PaymentRow[],
-    upcomingBookings: (bookingsResult.data ?? []) as BookingRow[],
+    upcomingBookings,
+    coachNames,
     packageEligibility,
     packageAlerts,
     loadError:

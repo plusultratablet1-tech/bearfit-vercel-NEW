@@ -33,6 +33,7 @@ type Props = {
   sessionLogs: SessionLogRow[]
   payments: PaymentRow[]
   upcomingBookings: BookingRow[]
+  coachNames: Record<string, string>
   packageEligibility: Record<string, unknown>
   packageAlerts: PackageAlert[]
   loadError: string | null
@@ -93,6 +94,7 @@ export default function BearfitDashboardClient({
   sessionLogs,
   payments,
   upcomingBookings,
+  coachNames,
   packageEligibility,
   packageAlerts,
   loadError,
@@ -352,7 +354,7 @@ export default function BearfitDashboardClient({
                             <div>
                               <span className="rounded-full bg-[#ff7a1a]/15 px-3 py-1 text-xs font-bold uppercase text-[#ff9b54]">{booking.status}</span>
                               <h4 className="mt-3 text-xl font-bold capitalize">{booking.session_type.replaceAll("_", " ")} Session</h4>
-                              <p className="mt-1 text-sm text-white/60">{booking.assigned_coach_user_id ? "Coach assigned" : "Any available coach"} • {booking.branch}</p>
+                              <p className="mt-1 text-sm text-white/60">{booking.assigned_coach_user_id ? (coachNames[booking.assigned_coach_user_id] || "Coach assigned") : "Any available coach"} • {booking.branch}</p>
                               <p className="mt-1 text-sm text-white/75">{formatDateTime(booking.start_at || booking.requested_start_at)}</p>
                             </div>
                             <div className="flex items-center gap-3">

@@ -28,3 +28,9 @@ test('staff schedule manages availability bookings no-shows and package attentio
   assert.match(src,/staff_package_attention_queue/)
   assert.match(src,/Payment Due|Renewal Soon|Last Session/i)
 })
+
+test('staff booking cards normalize member joins so real member names render', () => {
+  const src=fs.readFileSync(client,'utf8')
+  assert.match(src,/Array\.isArray\(.*members/)
+  assert.doesNotMatch(src,/const m = b\.members\?\.\[0\]/)
+})

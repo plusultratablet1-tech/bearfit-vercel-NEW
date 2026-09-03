@@ -30,6 +30,7 @@ export default async function MemberDashboardPage() {
       sessionLogs={account.sessionLogs}
       payments={account.payments}
       upcomingBookings={account.upcomingBookings}
+      coachNames={account.coachNames}
       packageEligibility={account.packageEligibility}
       packageAlerts={account.packageAlerts}
       loadError={account.loadError}

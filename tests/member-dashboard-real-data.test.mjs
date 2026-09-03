@@ -60,3 +60,17 @@ test('member dashboard renders real upcoming bookings and package alerts', () =>
   assert.match(dashboardClient, /Last Session/)
   assert.doesNotMatch(dashboardClient, /Scheduling is not connected to member accounts yet/i)
 })
+
+test('dashboard package notices ignore missing unrelated service packages and resolve coach names', () => {
+  const accountLoader = fs.readFileSync(new URL('../lib/member-account.ts', import.meta.url), 'utf8')
+  assert.match(accountLoader, /member_package_id/)
+  assert.match(accountLoader, /coachNames/)
+  assert.match(dashboardPage, /coachNames=/)
+  assert.match(dashboardClient, /coachNames\[/)
+})
+
+test('dashboard resolves coach names through the member-safe coach directory RPC', () => {
+  const accountLoader = fs.readFileSync(new URL('../lib/member-account.ts', import.meta.url), 'utf8')
+  assert.match(accountLoader, /member_coach_directory/)
+  assert.doesNotMatch(accountLoader, /\.from\(["']profiles["']\)[\s\S]{0,200}\.in\(["']id["'], coachIds\)/)
+})

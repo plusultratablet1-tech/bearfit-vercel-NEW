@@ -18,6 +18,7 @@ interface MemberDashboardPageClientProps {
   sessionLogs: SessionLogRow[]
   payments: PaymentRow[]
   upcomingBookings: BookingRow[]
+  coachNames: Record<string, string>
   packageEligibility: Record<string, unknown>
   packageAlerts: PackageAlert[]
   loadError: string | null
