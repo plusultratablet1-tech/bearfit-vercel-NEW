@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { CalendarDays, Coins, Gift, Home, PackageCheck, UserRound, WalletCards } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import type { MemberRewardsSnapshot, RewardCatalogItem, RewardRequestItem } from "./page"
@@ -59,9 +59,13 @@ export default function MemberRewardsPageClient({ initialSnapshot, initialError 
   const catalog = snapshot?.catalog ?? []
   const requests = snapshot?.requests ?? []
   const season = snapshot?.summary?.season_key ?? "Current season"
+  const seasonEarned = snapshot?.summary?.season_earned ?? 0
+  const seasonSpent = snapshot?.summary?.season_spent ?? 0
   const seasonBalance = snapshot?.summary?.season_balance ?? 0
+  const seasonEndsAt = snapshot?.summary?.season_ends_at ?? null
   const reserved = snapshot?.reserved_points ?? 0
   const available = snapshot?.available_points ?? 0
+  const pendingRewardIds = useMemo(() => new Set(requests.filter(request => request.status === "pending").map(request => request.reward_id)), [requests])
 
   return (
     <main className="min-h-screen bg-[#020b1c] pb-24 text-white lg:pb-8">
@@ -74,6 +78,7 @@ export default function MemberRewardsPageClient({ initialSnapshot, initialError 
           </div>
           <div className="flex flex-wrap gap-2">
             <Link href="/member/dashboard" className="rounded-full bg-white/10 px-4 py-2.5 text-sm font-semibold">Dashboard</Link>
+            <Link href="/member/bearforce" className="rounded-full bg-white/10 px-4 py-2.5 text-sm font-semibold">Bearforce</Link>
             <Link href="/member/schedule" className="rounded-full bg-[#ff7a1a] px-4 py-2.5 text-sm font-bold">Schedule</Link>
           </div>
         </header>
@@ -81,10 +86,11 @@ export default function MemberRewardsPageClient({ initialSnapshot, initialError 
         {error && <div className="mt-5 rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-200">{error}</div>}
         {success && <div className="mt-5 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm text-emerald-200">{success}</div>}
 
-        <section className="mt-6 grid gap-3 sm:grid-cols-3">
-          <BalanceCard icon={Coins} label="Season Balance" value={points(seasonBalance)} sublabel={`${season} earned balance`} />
+        <section className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <BalanceCard icon={Coins} label="Season Earned" value={points(seasonEarned)} sublabel={`${season} total earned`} />
+          <BalanceCard icon={WalletCards} label="Season Spent" value={points(seasonSpent)} sublabel="Approved redemptions" />
           <BalanceCard icon={PackageCheck} label="Reserved" value={points(reserved)} sublabel="Pending reward requests" />
-          <BalanceCard icon={WalletCards} label="Available to Redeem" value={points(available)} sublabel="Spendable right now" highlight />
+          <BalanceCard icon={WalletCards} label="Available to Spend" value={points(available)} sublabel={`Season ends ${seasonEndsAt ? dateTime(seasonEndsAt) : "—"}`} highlight />
         </section>
 
         <section className="mt-8">
@@ -92,7 +98,7 @@ export default function MemberRewardsPageClient({ initialSnapshot, initialError 
           {catalog.length === 0 ? (
             <div className="rounded-[24px] border border-dashed border-white/10 bg-[#141414] px-5 py-12 text-center"><Gift className="mx-auto text-[#ff7a1a]"/><h3 className="mt-3 text-xl font-bold">Rewards are being prepared</h3><p className="mt-2 text-sm text-white/45">BearFit staff will publish real rewards here.</p></div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{catalog.map(reward => <RewardCard key={reward.id} reward={reward} availablePoints={available} working={working === reward.id} onRedeem={() => void redeem(reward)} />)}</div>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{catalog.map(reward => <RewardCard key={reward.id} reward={reward} availablePoints={available} pending={pendingRewardIds.has(reward.id)} working={working === reward.id} onRedeem={() => void redeem(reward)} />)}</div>
           )}
         </section>
 
@@ -113,16 +119,17 @@ export default function MemberRewardsPageClient({ initialSnapshot, initialError 
   )
 }
 
-function RewardCard({ reward, availablePoints, working, onRedeem }: { reward: RewardCatalogItem; availablePoints: number; working: boolean; onRedeem: () => void }) {
+function RewardCard({ reward, availablePoints, pending, working, onRedeem }: { reward: RewardCatalogItem; availablePoints: number; pending: boolean; working: boolean; onRedeem: () => void }) {
   const outOfStock = reward.available_stock !== null && reward.available_stock <= 0
   const insufficient = availablePoints < reward.points_cost
   const membershipBlocked = !reward.membership_eligible
-  const disabled = working || outOfStock || insufficient || membershipBlocked
-  const reason = outOfStock ? "Out of stock" : insufficient ? "Not enough points" : membershipBlocked ? "Active membership required" : null
+  const disabled = working || pending || outOfStock || insufficient || membershipBlocked
+  const deficit = Math.max(reward.points_cost - availablePoints, 0)
+  const reason = pending ? "Request pending" : outOfStock ? "Out of stock" : insufficient ? `${points(deficit)} more points needed` : membershipBlocked ? "Active membership required" : null
   return <article className="overflow-hidden rounded-[24px] border border-white/[0.06] bg-[#171717]">
     <div className="relative h-40 bg-gradient-to-br from-[#ff7a1a] to-[#5f2706]">{reward.image_url ? <img src={reward.image_url} alt="" className="h-full w-full object-cover"/> : <div className="flex h-full items-center justify-center"><Gift size={48} className="text-white/90"/></div>}<div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-transparent"/><span className="absolute bottom-3 left-3 rounded-full bg-black/55 px-3 py-1 text-[10px] font-bold uppercase tracking-[.15em]">{reward.category}</span></div>
     <div className="p-5"><div className="flex items-start justify-between gap-3"><div><h3 className="text-xl font-black">{reward.title}</h3><p className="mt-2 text-sm leading-6 text-white/50">{reward.description || "BearFit member reward"}</p></div><span className="shrink-0 text-lg font-black text-[#ff9b54]">{points(reward.points_cost)} pts</span></div>
-      <div className="mt-4 flex flex-wrap gap-2 text-xs text-white/45">{reward.stock_quantity === null ? <span>Unlimited availability</span> : <span>{reward.available_stock ?? 0} left</span>}{reward.requires_active_membership && <span>· Active membership</span>}</div>
+      <div className="mt-4 flex flex-wrap gap-2 text-xs text-white/45">{reward.stock_quantity === null ? <span>Unlimited</span> : <span>{reward.available_stock ?? 0} left</span>}{reward.requires_active_membership && <span>· Active membership</span>}</div>
       <button disabled={disabled} onClick={onRedeem} className="mt-5 min-h-12 w-full rounded-xl bg-[#ff7a1a] px-4 text-sm font-extrabold disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/35">{working ? "Submitting…" : reason ?? "Redeem"}</button>
     </div>
   </article>

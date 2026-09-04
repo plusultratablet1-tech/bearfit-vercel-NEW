@@ -36,3 +36,8 @@ test('dashboard explains spendable season balance separately from lifetime achie
   assert.match(dashboard, /Lifetime/i)
   assert.match(dashboard, /this week/i)
 })
+
+test("dashboard progression cards link to the Bearforce detail page", () => {
+  const dashboard = fs.readFileSync("components/bearfit/BearfitDashboardClient.tsx", "utf8")
+  assert.match(dashboard, /href="\/member\/bearforce"/)
+})

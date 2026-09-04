@@ -51,6 +51,8 @@ export type MemberRewardsSnapshot = {
     season_key: string
     season_balance: number
     season_earned: number
+    season_spent: number
+    season_ends_at: string | null
     lifetime_points: number
   }
   reserved_points: number

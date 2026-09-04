@@ -12,6 +12,8 @@ import type {
   ProfileRow,
   SessionLogRow,
 } from "@/lib/member-account"
+import { displayPackageNameForMember } from "@/lib/member-account"
+import { displaySessionLabel } from "@/lib/session-taxonomy"
 import {
   Activity,
   Bell,
@@ -115,25 +117,18 @@ function alertPriority(alert: PackageAlert) {
   return 0
 }
 
-function formatSessionTitle(sessionType: string) {
-  const normalized = sessionType.toLowerCase()
-  if (normalized === "pilates_group") return "Pilates Group Session"
-  if (normalized === "pilates_1on1") return "Pilates 1-on-1 Session"
-  if (normalized.includes("boxing")) return "Boxing Session"
-  if (normalized.includes("cardio")) return "Cardio Session"
-  if (normalized.includes("weight") || normalized.includes("strength")) return "Weights Session"
-  if (normalized === "fitness") return "Fitness Session"
-  return `${sessionType.replaceAll("_", " ")} Session`
+function formatSessionTitle(sessionLabel: string | null, sessionType: string) {
+  return displaySessionLabel(sessionLabel, sessionType)
 }
 
-function sessionVisualForType(sessionType: string) {
-  const normalized = sessionType.toLowerCase()
+function sessionVisualForType(sessionLabel: string | null, sessionType: string) {
+  const normalized = `${sessionLabel ?? ""} ${sessionType}`.toLowerCase()
 
   if (normalized.includes("pilates")) {
     return { image: "/onboarding/better-function1.jpg", position: "center 38%" }
   }
 
-  if (normalized.includes("cardio") || normalized.includes("mobility")) {
+  if (normalized.includes("cardio") || normalized.includes("conditioning")) {
     return { image: "/better-form.png", position: "center 32%" }
   }
 
@@ -227,7 +222,8 @@ export default function BearfitDashboardClient({
   const branch = member?.branch || profile?.branch || "Not assigned"
   const packageName = member?.package_name || member?.package_type || "No package assigned"
   const latestPaidPackage = payments.find((payment) => payment.status?.toLowerCase() === "paid" && payment.package_name)?.package_name
-  const displayPackageName = /^legacy/i.test(packageName) && latestPaidPackage ? latestPaidPackage : packageName
+  const rawDisplayPackageName = /^legacy/i.test(packageName) && latestPaidPackage ? latestPaidPackage : packageName
+  const displayPackageName = displayPackageNameForMember(member, rawDisplayPackageName)
   const membershipStatus = member?.membership_status || member?.status || "Not assigned"
   const paymentStatus = member?.payment_status || "Not recorded"
   const sessionsUsed = member?.sessions_used ?? 0
@@ -239,13 +235,13 @@ export default function BearfitDashboardClient({
   const nextBooking = upcomingBookings[0] ?? null
   const nextBookingStart = nextBooking?.start_at || nextBooking?.requested_start_at || null
   const sessionCountdown = useSessionCountdown(nextBookingStart)
-  const nextSessionVisual = nextBooking ? sessionVisualForType(nextBooking.session_type) : null
+  const nextSessionVisual = nextBooking ? sessionVisualForType(nextBooking.session_label, nextBooking.session_type) : null
   const activityItems = [
     ...sessionLogs.map((log) => ({
       id: `session-${log.id}`,
       kind: "session" as const,
       timestamp: log.trained_at,
-      title: "Training session",
+      title: displaySessionLabel(log.session_label, "unknown"),
       detail: log.notes || branch,
       amount: null as number | null,
       sessionsLeft: log.sessions_left_after,
@@ -469,6 +465,7 @@ export default function BearfitDashboardClient({
                         value={bearforceSummary ? `${bearforceSummary.streak_weeks} wk` : "—"}
                         sublabel={bearforceSummary ? `${bearforceSummary.current_week_sessions} / ${bearforceSummary.weekly_goal} this week${bearforceSummary.grace_week_active ? " · Grace active" : ""}` : "Progress unavailable"}
                         progress={bearforceSummary ? Math.min((bearforceSummary.current_week_sessions / Math.max(bearforceSummary.weekly_goal, 1)) * 100, 100) : 0}
+                        href="/member/bearforce"
                       />
                       <ProgressionCard
                         icon={Coins}
@@ -476,6 +473,7 @@ export default function BearfitDashboardClient({
                         value={bearforceSummary ? formatPoints(bearforceSummary.lifetime_points) : "—"}
                         sublabel={bearforceSummary ? `${formatPoints(bearforceSummary.season_balance)} Available to spend · Lifetime` : "Progress unavailable"}
                         progress={bearforceSummary?.prestige?.progress_percent ?? 0}
+                        href="/member/bearforce"
                       />
                       <ProgressionCard
                         icon={Trophy}
@@ -483,6 +481,7 @@ export default function BearfitDashboardClient({
                         value={bearforceSummary?.prestige?.name ?? "—"}
                         sublabel={bearforceSummary ? `${bearforceSummary.season_key} · ${formatPoints(bearforceSummary.season_earned)} earned` : "Progress unavailable"}
                         progress={bearforceSummary?.prestige?.progress_percent ?? 0}
+                        href="/member/bearforce"
                       />
                       <ProgressionCard
                         icon={ShieldCheck}
@@ -490,6 +489,7 @@ export default function BearfitDashboardClient({
                         value={bearforceSummary?.fitness_tier?.name ?? "—"}
                         sublabel={bearforceSummary?.fitness_tier?.next_name ? `${formatPoints(bearforceSummary.fitness_tier.points_to_next)} pts to ${bearforceSummary.fitness_tier.next_name}` : "Top lifetime tier reached"}
                         progress={bearforceSummary?.fitness_tier?.progress_percent ?? 0}
+                        href="/member/bearforce"
                       />
                     </div>
                   </section>
@@ -549,7 +549,7 @@ export default function BearfitDashboardClient({
                             <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end lg:gap-8">
                               <div className="max-w-3xl">
                                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/55">Your next workout</p>
-                                <h4 className="mt-2 text-4xl font-black leading-[0.95] sm:text-5xl lg:text-6xl">{formatSessionTitle(nextBooking.session_type)}</h4>
+                                <h4 className="mt-2 text-4xl font-black leading-[0.95] sm:text-5xl lg:text-6xl">{formatSessionTitle(nextBooking.session_label, nextBooking.session_type)}</h4>
                                 <div className="mt-5 grid gap-2 text-sm text-white/75 sm:flex sm:flex-wrap sm:gap-x-5 sm:gap-y-2 md:text-base">
                                   <span className="inline-flex items-center gap-2"><MapPin size={17} className="text-[#ff7a1a]" /> {nextBooking.branch}</span>
                                   <span className="inline-flex items-center gap-2"><Clock3 size={17} className="text-[#ff7a1a]" /> {formatDateTime(nextBookingStart)}</span>
@@ -590,7 +590,7 @@ export default function BearfitDashboardClient({
                             {upcomingBookings.slice(1).map((booking) => (
                               <Link key={booking.id} href="/member/schedule" className="flex items-center justify-between gap-3 rounded-2xl border border-white/[0.07] bg-[#1b1b1b] px-4 py-3 transition hover:bg-[#202020]">
                                 <div className="min-w-0">
-                                  <p className="truncate font-bold">{formatSessionTitle(booking.session_type)}</p>
+                                  <p className="truncate font-bold">{formatSessionTitle(booking.session_label, booking.session_type)}</p>
                                   <p className="mt-1 truncate text-xs text-white/45">{formatDateTime(booking.start_at || booking.requested_start_at)} · {booking.branch}</p>
                                 </div>
                                 <ChevronRight className="shrink-0 text-[#ff7a1a]" size={18} />
@@ -738,15 +738,17 @@ function ProgressionCard({
   value,
   sublabel,
   progress,
+  href,
 }: {
   icon: typeof Home
   label: string
   value: string
   sublabel: string
   progress: number
+  href?: string
 }) {
-  return (
-    <div className="min-w-0 rounded-[20px] border border-white/[0.05] bg-[#242424] p-4 md:p-5">
+  const content = (
+    <div className="min-w-0 rounded-[20px] border border-white/[0.05] bg-[#242424] p-4 transition hover:border-[#ff7a1a]/25 hover:bg-[#282828] md:p-5">
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-bold text-white/55 sm:text-sm">{label}</p>
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#ff7a1a]/15 text-[#ff8b38]">
@@ -760,6 +762,7 @@ function ProgressionCard({
       </div>
     </div>
   )
+  return href ? <Link href={href}>{content}</Link> : content
 }
 
 function EmptyState({ text }: { text: string }) {

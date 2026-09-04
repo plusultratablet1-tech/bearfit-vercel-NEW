@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
+import { SESSION_TAXONOMY, categoryForSessionLabel, displaySessionLabel, labelForServiceFallback } from "@/lib/session-taxonomy"
 
 const supabase = createClient()
 
@@ -11,6 +12,7 @@ type ConfirmedBooking = {
   start_at: string
   end_at: string
   session_type: string
+  session_label: string | null
   branch: string
   member_package_id: string | null
 }
@@ -48,6 +50,7 @@ export default function CheckInPageClient({ role }: { role: "staff" | "admin" })
   const [context, setContext] = useState<CheckinContext | null>(null)
   const [selectedBookingId, setSelectedBookingId] = useState("")
   const [selectedPackageId, setSelectedPackageId] = useState("")
+  const [selectedSessionLabel, setSelectedSessionLabel] = useState("Strength Training")
 
   useEffect(() => () => stopCamera(), [])
 
@@ -69,10 +72,14 @@ export default function CheckInPageClient({ role }: { role: "staff" | "admin" })
     if (booking) {
       setSelectedBookingId(booking.id)
       setSelectedPackageId(booking.member_package_id ?? "")
+      setSelectedSessionLabel(booking.session_label ?? labelForServiceFallback(booking.session_type))
       return
     }
     setSelectedBookingId("")
-    setSelectedPackageId(next.packages.length === 1 ? next.packages[0].id : "")
+    const onlyPackage = next.packages.length === 1 ? next.packages[0] : null
+    setSelectedPackageId(onlyPackage?.id ?? "")
+    const matchingLabel = SESSION_TAXONOMY.find((item) => item.category === onlyPackage?.service_category)?.label
+    setSelectedSessionLabel(matchingLabel ?? "Strength Training")
   }
 
   async function lookupMember(rawCode: string) {
@@ -123,6 +130,7 @@ export default function CheckInPageClient({ role }: { role: "staff" | "admin" })
       p_notes: notes.trim() || null,
       p_booking_id: selectedBookingId || null,
       p_member_package_id: selectedBookingId ? null : selectedPackageId || null,
+      p_session_label: selectedBookingId ? null : selectedSessionLabel,
     })
 
     if (error) {
@@ -221,11 +229,20 @@ export default function CheckInPageClient({ role }: { role: "staff" | "admin" })
 
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wider text-white/55">Confirmed booking</label>
-                    <select value={selectedBookingId} onChange={(e) => { const id=e.target.value; setSelectedBookingId(id); const booking=context.confirmed_bookings.find((item)=>item.id===id); if (booking?.member_package_id) setSelectedPackageId(booking.member_package_id) }} className="mt-2 w-full rounded-xl bg-[#202020] px-3 py-3">
+                    <select value={selectedBookingId} onChange={(e) => { const id=e.target.value; setSelectedBookingId(id); const booking=context.confirmed_bookings.find((item)=>item.id===id); if (booking) { if (booking.member_package_id) setSelectedPackageId(booking.member_package_id); setSelectedSessionLabel(booking.session_label ?? labelForServiceFallback(booking.session_type)) } else { setSelectedSessionLabel("Strength Training") } }} className="mt-2 w-full rounded-xl bg-[#202020] px-3 py-3">
                       <option value="">Manual package check-in</option>
-                      {context.confirmed_bookings.map((booking) => <option key={booking.id} value={booking.id}>{formatDate(booking.start_at)} • {booking.session_type} • {booking.branch}</option>)}
+                      {context.confirmed_bookings.map((booking) => <option key={booking.id} value={booking.id}>{formatDate(booking.start_at)} • {displaySessionLabel(booking.session_label, booking.session_type)} • {booking.branch}</option>)}
                     </select>
                   </div>
+
+
+                  {!selectedBookingId && <div>
+                    <label className="text-xs font-semibold uppercase tracking-wider text-white/55">Manual workout type</label>
+                    <select value={selectedSessionLabel} onChange={(e) => { const label=e.target.value; setSelectedSessionLabel(label); const category=categoryForSessionLabel(label); const matching=context.packages.find((pkg)=>pkg.service_category===category); if (matching) setSelectedPackageId(matching.id) }} className="mt-2 w-full rounded-xl bg-[#202020] px-3 py-3">
+                      {SESSION_TAXONOMY.map((item)=><option key={item.label} value={item.label}>{item.label}</option>)}
+                    </select>
+                    <p className="mt-1 text-[11px] text-white/40">Package category: {categoryForSessionLabel(selectedSessionLabel)}</p>
+                  </div>}
 
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wider text-white/55">Package</label>

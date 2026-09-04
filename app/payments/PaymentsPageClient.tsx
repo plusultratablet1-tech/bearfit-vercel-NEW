@@ -8,7 +8,7 @@ const supabase = createClient()
 
 type MemberOption = { id: string; member_code: string; full_name: string; package_name: string; sessions_left: number; total_sessions: number }
 type MemberJoin = { member_code: string | null; name: string | null }
-type PackageDefinition = { id: string; code: string; name: string; service_category: string; included_sessions: number; validity_days: number | null; billing_mode: string }
+type PackageDefinition = { id: string; code: string; name: string; service_category: string; included_sessions: number; validity_days: number | null; billing_mode: string; standard_price: number | null }
 type PackageStage = { id: string; package_id: string; stage_key: string; label: string; stage_order: number }
 type PackageCycle = { id: string; member_id: string; package_id: string; status: string; sessions_left: number; sessions_total: number }
 type PaymentRow = { id: string; member_id: string; package_name: string | null; stage: string | null; amount: number | null; status: string | null; sessions_purchased: number; created_at: string; paid_at: string | null; credit_applied_at: string | null; member_package_id: string | null; members?: MemberJoin[] | null }
@@ -42,7 +42,7 @@ export default function PaymentsPageClient({ role }: { role: "staff" | "admin" }
     const [paymentsResult, membersResult, packagesResult, stagesResult, cyclesResult] = await Promise.all([
       supabase.from("payments").select(`id,member_id,package_name,stage,amount,status,sessions_purchased,created_at,paid_at,credit_applied_at,member_package_id,members:members(member_code,name)`).order("created_at", { ascending: false }),
       supabase.from("members").select("id,member_code,full_name,package_name,sessions_left,total_sessions").order("full_name"),
-      supabase.from("package_definitions").select("id,code,name,service_category,included_sessions,validity_days,billing_mode").eq("active", true).order("name"),
+      supabase.from("package_definitions").select("id,code,name,service_category,included_sessions,validity_days,billing_mode,standard_price").eq("active", true).order("name"),
       supabase.from("package_payment_stages").select("id,package_id,stage_key,label,stage_order").eq("active", true).order("stage_order"),
       supabase.from("member_package_cycles").select("id,member_id,package_id,status,sessions_left,sessions_total").order("created_at", { ascending: false }),
     ])
@@ -116,7 +116,7 @@ export default function PaymentsPageClient({ role }: { role: "staff" | "admin" }
   }
 
   return <main className="min-h-screen bg-[#020b1c] px-4 py-6 text-white"><div className="mx-auto max-w-7xl">
-    <header className="mb-6 flex flex-wrap items-center justify-between gap-4"><div><p className="text-sm uppercase tracking-[0.2em] text-orange-300">BearFit Staff</p><h1 className="text-3xl font-extrabold">Payments & Packages</h1><p className="mt-1 text-sm text-white/55">Signed in as {role}. Package rules now control session credits.</p></div><div className="flex gap-2"><Link href="/checkin" className="rounded-full bg-[#25324a] px-5 py-3 text-sm font-semibold">Check-in</Link><Link href="/member/dashboard" className="rounded-full bg-[#ff7a1a] px-5 py-3 text-sm font-semibold">Member Dashboard</Link></div></header>
+    <header className="mb-6 flex flex-wrap items-center justify-between gap-4"><div><p className="text-sm uppercase tracking-[0.2em] text-orange-300">BearFit Staff</p><h1 className="text-3xl font-extrabold">Payments & Packages</h1><p className="mt-1 text-sm text-white/55">Signed in as {role}. Package rules now control session credits.</p></div><div className="flex flex-wrap gap-2"><Link href="/staff/packages" className="rounded-full bg-[#25324a] px-5 py-3 text-sm font-semibold">Packages</Link><Link href="/staff/schedule" className="rounded-full bg-[#25324a] px-5 py-3 text-sm font-semibold">Schedule</Link><Link href="/checkin" className="rounded-full bg-[#25324a] px-5 py-3 text-sm font-semibold">Check-in</Link><Link href="/member/dashboard" className="rounded-full bg-[#ff7a1a] px-5 py-3 text-sm font-semibold">Member Dashboard</Link></div></header>
     {error && <div className="mb-4 rounded-2xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-200">{error}</div>}{success && <div className="mb-4 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-4 text-sm text-emerald-200">{success}</div>}
     <section className="grid gap-4 md:grid-cols-3"><StatCard title="Pending Payments" value={stats.pending}/><StatCard title="Paid Today" value={stats.paidToday}/><StatCard title="Activation Sessions" value={stats.sessionsSold}/></section>
     <section className="mt-6 grid gap-6 xl:grid-cols-[420px_1fr]">
@@ -126,6 +126,7 @@ export default function PaymentsPageClient({ role }: { role: "staff" | "admin" }
         <Select label="Package" value={form.packageCode} onChange={choosePackage}><option value="">Select package</option>{packages.map((p) => <option key={p.id} value={p.code}>{p.name} — {p.included_sessions} session{p.included_sessions===1?"":"s"}{p.validity_days ? ` / ${p.validity_days} days` : ""}</option>)}</Select>
         <Select label="Payment stage" value={form.stageKey} onChange={(value) => setForm({ ...form, stageKey:value, memberPackageId:"" })}>{packageStages.map((s) => <option key={s.id} value={s.stage_key}>{s.label}</option>)}</Select>
         {!isActivation && <Select label="Existing package cycle" value={form.memberPackageId} onChange={(value) => setForm({ ...form, memberPackageId:value })}><option value="">Select package cycle</option>{matchingCycles.map((c) => <option key={c.id} value={c.id}>{c.status} · {c.sessions_left}/{c.sessions_total} remaining</option>)}</Select>}
+        {selectedPackage && <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm text-white/60"><span className="font-semibold text-white/80">Standard price:</span> {selectedPackage.standard_price == null ? "Not configured" : peso(selectedPackage.standard_price)} <span className="text-white/35">· guidance only</span></div>}
         <Field label="Amount (PHP)" value={form.amount} onChange={(value) => setForm({ ...form, amount:value })} placeholder="0" />
         <Field label="Payment method" value={form.paymentType} onChange={(value) => setForm({ ...form, paymentType:value })} placeholder="GCash" />
         <Select label="Initial status" value={form.status} onChange={(value) => setForm({ ...form, status:value as "pending"|"paid" })}><option value="pending">Pending — package/stage not active yet</option><option value="paid">Paid — apply package/stage now</option></Select>

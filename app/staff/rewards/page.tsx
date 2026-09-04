@@ -35,6 +35,7 @@ export type StaffRewardRequestItem = {
   member_id: string
   member_code: string
   member_name: string
+  member_is_demo: boolean
   reward_id: string
   reward_title: string
   reward_category: string
