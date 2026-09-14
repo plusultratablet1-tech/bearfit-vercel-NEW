@@ -2,21 +2,18 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 
-const dashboardClient = fs.readFileSync(
-  new URL('../components/bearfit/BearfitDashboardClient.tsx', import.meta.url),
+const sharedAccount = fs.readFileSync(
+  new URL('../lib/member-account.ts', import.meta.url),
   'utf8'
 )
+const serverAccountPath = new URL('../lib/member-account-server.ts', import.meta.url)
 
-const clientHelpersPath = new URL('../lib/member-account-client.ts', import.meta.url)
+test('member account shared module is client-safe and server loader stays server-only', () => {
+  assert.doesNotMatch(sharedAccount, /@\/lib\/supabase\/server|next\/headers/)
+  assert.match(sharedAccount, /displayPackageNameForMember/)
 
-test('member dashboard keeps server-only Supabase code out of the client bundle', () => {
-  assert.doesNotMatch(
-    dashboardClient,
-    /import\s+\{\s*displayPackageNameForMember\s*\}\s+from\s+["']@\/lib\/member-account["']/
-  )
-
-  assert.equal(fs.existsSync(clientHelpersPath), true)
-  const clientHelpers = fs.readFileSync(clientHelpersPath, 'utf8')
-  assert.doesNotMatch(clientHelpers, /@\/lib\/supabase\/server|next\/headers/)
-  assert.match(clientHelpers, /displayPackageNameForMember/)
+  assert.equal(fs.existsSync(serverAccountPath), true)
+  const serverAccount = fs.readFileSync(serverAccountPath, 'utf8')
+  assert.match(serverAccount, /@\/lib\/supabase\/server/)
+  assert.match(serverAccount, /loadMemberAccountData/)
 })
