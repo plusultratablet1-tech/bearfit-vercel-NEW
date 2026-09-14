@@ -3,6 +3,7 @@ import fs from "node:fs"
 import test from "node:test"
 
 const shell = fs.readFileSync("components/bearfit/MemberAppShell.tsx", "utf8")
+const dashboardClient = fs.readFileSync("components/bearfit/BearfitDashboardClient.tsx", "utf8")
 const rewardsClient = fs.readFileSync("app/member/rewards/MemberRewardsPageClient.tsx", "utf8")
 const rewardsPage = fs.readFileSync("app/member/rewards/page.tsx", "utf8")
 const accountLoader = fs.readFileSync("lib/member-account-server.ts", "utf8")
@@ -10,6 +11,12 @@ const accountLoader = fs.readFileSync("lib/member-account-server.ts", "utf8")
 test("member shell routes Payments to the dedicated member page", () => {
   assert.match(shell, /href:\s*["']\/member\/payments["']/)
   assert.doesNotMatch(shell, /\/member\/dashboard#payments/)
+})
+
+test("dashboard routes Payments to the dedicated member page", () => {
+  assert.match(dashboardClient, /label:\s*["']Payments["'][\s\S]*?href:\s*["']\/member\/payments["']/)
+  assert.match(dashboardClient, /MobileNavItem href=["']\/member\/payments["'] label=["']Payments["']/)
+  assert.doesNotMatch(dashboardClient, /href=["']#payments["']/)
 })
 
 test("rewards uses the shared member app shell without its own mobile navigation", () => {
