@@ -10,6 +10,14 @@ import type {
   SessionLogRow,
 } from "@/lib/member-account"
 
+const SERVICE_CATEGORIES = ["fitness", "pilates_group", "pilates_1on1"] as const
+
+type CoachDirectoryItem = {
+  id: string
+  full_name: string
+  branch: string
+}
+
 export async function loadMemberAccountData(userId: string): Promise<MemberAccountData> {
   const supabase = await createClient()
 
@@ -59,7 +67,22 @@ export async function loadMemberAccountData(userId: string): Promise<MemberAccou
     }
   }
 
-  const [sessionsResult, paymentsResult, bookingsResult, bearforceResult] = await Promise.all([
+  const eligibilityPromise = Promise.all(
+    SERVICE_CATEGORIES.map((serviceCategory) =>
+      supabase.rpc("member_package_eligibility", {
+        p_service_category: serviceCategory,
+      }),
+    ),
+  )
+
+  const [
+    sessionsResult,
+    paymentsResult,
+    bookingsResult,
+    bearforceResult,
+    coachDirectoryResult,
+    eligibilityResults,
+  ] = await Promise.all([
     supabase
       .from("session_logs")
       .select("*")
@@ -81,6 +104,8 @@ export async function loadMemberAccountData(userId: string): Promise<MemberAccou
       .order("start_at", { ascending: true })
       .limit(3),
     supabase.rpc("member_bearforce_summary"),
+    supabase.rpc("member_coach_directory"),
+    eligibilityPromise,
   ])
 
   if (sessionsResult.error) {
@@ -91,34 +116,35 @@ export async function loadMemberAccountData(userId: string): Promise<MemberAccou
     console.error("Failed to load BearFit payments", paymentsResult.error)
   }
 
+  if (bookingsResult.error) {
+    console.error("Failed to load BearFit upcoming bookings", bookingsResult.error)
+  }
+
   if (bearforceResult.error) {
     console.error("Failed to load Bearforce progression", bearforceResult.error)
+  }
+
+  if (coachDirectoryResult.error) {
+    console.error("Failed to load BearFit coach names", coachDirectoryResult.error)
   }
 
   const upcomingBookings = (bookingsResult.data ?? []) as BookingRow[]
   const coachIds = new Set(
     upcomingBookings
       .map((booking) => booking.assigned_coach_user_id)
-      .filter((id): id is string => Boolean(id))
+      .filter((id): id is string => Boolean(id)),
   )
   const coachNames: Record<string, string> = {}
-  if (coachIds.size > 0) {
-    const { data: coachDirectory, error: coachError } = await supabase.rpc("member_coach_directory")
-    if (coachError) {
-      console.error("Failed to load BearFit coach names", coachError)
-    } else {
-      for (const coach of coachDirectory ?? []) {
-        if (coachIds.has(coach.id)) coachNames[coach.id] = coach.full_name
-      }
-    }
+  for (const coach of (coachDirectoryResult.data ?? []) as CoachDirectoryItem[]) {
+    if (coachIds.has(coach.id)) coachNames[coach.id] = coach.full_name
   }
 
   const packageEligibility: Record<string, unknown> = {}
   const packageAlerts: PackageAlert[] = []
-  for (const serviceCategory of ["fitness", "pilates_group", "pilates_1on1"]) {
-    const { data } = await supabase.rpc("member_package_eligibility", {
-      p_service_category: serviceCategory,
-    })
+
+  eligibilityResults.forEach((result, index) => {
+    const serviceCategory = SERVICE_CATEGORIES[index]
+    const data = result.data
     if (data && typeof data === "object" && !Array.isArray(data)) {
       packageEligibility[serviceCategory] = data
       const item = data as Record<string, unknown>
@@ -132,7 +158,9 @@ export async function loadMemberAccountData(userId: string): Promise<MemberAccou
         })
       }
     }
-  }
+  })
+
+  const hasEligibilityError = eligibilityResults.some((result) => Boolean(result.error))
 
   return {
     member,
@@ -145,7 +173,12 @@ export async function loadMemberAccountData(userId: string): Promise<MemberAccou
     packageAlerts,
     bearforceSummary: bearforceResult.error ? null : (bearforceResult.data as BearforceSummary | null),
     loadError:
-      sessionsResult.error || paymentsResult.error || bearforceResult.error
+      sessionsResult.error ||
+      paymentsResult.error ||
+      bookingsResult.error ||
+      bearforceResult.error ||
+      coachDirectoryResult.error ||
+      hasEligibilityError
         ? "Some recent account activity couldn't be loaded."
         : null,
   }

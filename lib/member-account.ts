@@ -13,6 +13,31 @@ export type PackageAlert = {
   blockingReason?: string | null
 }
 
+export type MemberPackageEligibilityView = {
+  member_package_id?: string | null
+  package_id?: string | null
+  package_code?: string | null
+  package_name?: string | null
+  service_category: string
+  sessions_left: number
+  sessions_total: number
+  sessions_used?: number
+  blocking_reason?: string | null
+  warning_level?: string | null
+  warning_message?: string | null
+  payment_stage_due?: string | null
+  payment_stage_label?: string | null
+  expires_at?: string | null
+}
+
+export type MemberPaymentsData = {
+  member: MemberRow | null
+  profile: ProfileRow | null
+  payments: PaymentRow[]
+  packages: MemberPackageEligibilityView[]
+  loadError: string | null
+}
+
 export type BearforceProgress = {
   name: string
   next_name: string | null

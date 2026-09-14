@@ -4,14 +4,27 @@ import MemberRewardsPageClient from "./MemberRewardsPageClient"
 
 export default async function MemberRewardsPage() {
   const supabase = await createClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
+
   if (authError || !user) redirect("/login")
 
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle()
-  if (profile?.role === "staff" || profile?.role === "admin") redirect("/staff/rewards")
+  const [profileResult, snapshotResult] = await Promise.all([
+    supabase.from("profiles").select("role").eq("id", user.id).maybeSingle(),
+    supabase.rpc("member_rewards_snapshot"),
+  ])
 
-  const { data, error } = await supabase.rpc("member_rewards_snapshot")
-  return <MemberRewardsPageClient initialSnapshot={(data ?? null) as MemberRewardsSnapshot | null} initialError={error?.message ?? null} />
+  const role = profileResult.data?.role
+  if (role === "staff" || role === "admin") redirect("/staff/rewards")
+
+  return (
+    <MemberRewardsPageClient
+      initialSnapshot={(snapshotResult.data ?? null) as MemberRewardsSnapshot | null}
+      initialError={snapshotResult.error?.message ?? profileResult.error?.message ?? null}
+    />
+  )
 }
 
 export type RewardCatalogItem = {
