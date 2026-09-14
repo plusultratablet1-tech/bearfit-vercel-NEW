@@ -57,7 +57,7 @@ const navItems = [
   { label: "Home", icon: Home, href: "/member/dashboard" },
   { label: "Schedule", icon: CalendarDays, href: "/member/schedule" },
   { label: "Rewards", icon: Gift, href: "/member/rewards" },
-  { label: "Payments", icon: CreditCard, href: "#payments" },
+  { label: "Payments", icon: CreditCard, href: "/member/payments" },
   { label: "Profile", icon: UserIcon, href: "/member/profile" },
 ]
 
@@ -680,7 +680,7 @@ export default function BearfitDashboardClient({
                 <MobileNavItem href="/member/dashboard" label="Home" icon={Home} active />
                 <MobileNavItem href="/member/schedule" label="Schedule" icon={CalendarDays} />
                 <MobileNavItem href="/member/rewards" label="Rewards" icon={Gift} />
-                <MobileNavItem href="#payments" label="Payments" icon={CreditCard} />
+                <MobileNavItem href="/member/payments" label="Payments" icon={CreditCard} />
                 <MobileNavItem href="/member/profile" label="Profile" icon={UserIcon} />
               </div>
             </nav>
