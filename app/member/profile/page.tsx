@@ -9,7 +9,7 @@ import {
   User as UserIcon,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
-import { loadMemberAccountData } from "@/lib/member-account"
+import { loadMemberAccountData } from "@/lib/member-account-server"
 
 function formatDate(iso: string | null) {
   if (!iso) return "—"

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
-import { loadMemberAccountData } from "@/lib/member-account"
+import { loadMemberAccountData } from "@/lib/member-account-server"
 import MemberDashboardPageClient from "./MemberDashboardPageClient"
 
 export default async function MemberDashboardPage() {
