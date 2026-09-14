@@ -1,8 +1,14 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
-import PaymentsPageClient from "./PaymentsPageClient"
+import PaymentsPageClient, { type PaymentPrefill } from "./PaymentsPageClient"
 
-export default async function PaymentsPage() {
+type PaymentsSearchParams = Promise<Record<string, string | string[] | undefined>>
+
+function stringParam(value: string | string[] | undefined) {
+  return typeof value === "string" ? value : undefined
+}
+
+export default async function PaymentsPage({ searchParams }: { searchParams: PaymentsSearchParams }) {
   const supabase = await createClient()
   const {
     data: { user },
@@ -21,5 +27,13 @@ export default async function PaymentsPage() {
     redirect("/member/dashboard")
   }
 
-  return <PaymentsPageClient role={role} />
+  const params = await searchParams
+  const prefill: PaymentPrefill = {
+    memberId: stringParam(params.memberId),
+    packageCode: stringParam(params.packageCode),
+    memberPackageId: stringParam(params.memberPackageId),
+    stageKey: stringParam(params.stageKey),
+  }
+
+  return <PaymentsPageClient role={role} prefill={prefill} />
 }
