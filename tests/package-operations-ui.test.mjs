@@ -16,10 +16,10 @@ test("staff packages loads the member package attention queue", () => {
 })
 
 test("package attention links hand off member and package context to payments", () => {
-  assert.match(staffClient, /memberId=/)
-  assert.match(staffClient, /packageCode=/)
-  assert.match(staffClient, /memberPackageId=/)
-  assert.match(staffClient, /stageKey=activation/)
+  assert.match(staffClient, /memberId:\s*item\.member_id/)
+  assert.match(staffClient, /packageCode:\s*item\.package_code/)
+  assert.match(staffClient, /params\.set\(["']memberPackageId["']/)
+  assert.match(staffClient, /params\.set\(["']stageKey["'],\s*["']activation["']\)/)
 })
 
 test("payments page accepts server parsed prefill values", () => {
@@ -36,14 +36,14 @@ test("payments loads package trigger metadata and stage payment statuses", () =>
 })
 
 test("payment prefill validates cycle ownership and derives the highest unpaid due stage", () => {
-  assert.match(paymentsClient, /cycle\.member_id\s*===\s*member\.id/)
+  assert.match(paymentsClient, /cycle\s*&&\s*cycle\.member_id\s*===\s*member\.id/)
   assert.match(paymentsClient, /cycle\.package_id\s*===\s*pkg\.id/)
   assert.match(paymentsClient, /status\s*!==\s*["']paid["']/)
   assert.match(paymentsClient, /status\s*!==\s*["']waived["']/)
-  assert.match(paymentsClient, /stage_order\s*-\s*a\.stage_order|b\.stage_order\s*-\s*a\.stage_order/)
+  assert.match(paymentsClient, /b\.stage_order\s*-\s*a\.stage_order/)
 })
 
 test("renewal activation can create a new cycle instead of reusing the old cycle", () => {
-  assert.match(staffClient, /stageKey=activation/)
-  assert.match(paymentsClient, /memberPackageId:\s*["']["']/)
+  assert.match(staffClient, /params\.set\(["']stageKey["'],\s*["']activation["']\)/)
+  assert.match(paymentsClient, /memberPackageId:\s*validCycle\s*&&[\s\S]*\?\s*validCycle\.id\s*:\s*["']["']/)
 })
