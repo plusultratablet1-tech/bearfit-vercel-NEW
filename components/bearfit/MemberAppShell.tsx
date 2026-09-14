@@ -21,7 +21,7 @@ const navItems = [
   { label: "Home", icon: Home, href: "/member/dashboard", activePath: "/member/dashboard" },
   { label: "Schedule", icon: CalendarDays, href: "/member/schedule", activePath: "/member/schedule" },
   { label: "Rewards", icon: Gift, href: "/member/rewards", activePath: "/member/rewards" },
-  { label: "Payments", icon: CreditCard, href: "/member/dashboard#payments", activePath: "/member/payments" },
+  { label: "Payments", icon: CreditCard, href: "/member/payments", activePath: "/member/payments" },
   { label: "Profile", icon: UserIcon, href: "/member/profile", activePath: "/member/profile" },
 ]
 
