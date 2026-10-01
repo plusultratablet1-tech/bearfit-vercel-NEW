@@ -12,6 +12,7 @@ import {
   Package,
   ScanLine,
   ShieldCheck,
+  UsersRound,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
@@ -20,6 +21,7 @@ const supabase = createClient()
 const navItems = [
   { label: "Schedule", icon: CalendarDays, href: "/staff/schedule" },
   { label: "Check-In", icon: ScanLine, href: "/checkin" },
+  { label: "Members", icon: UsersRound, href: "/staff/members" },
   { label: "Payments", icon: CreditCard, href: "/payments" },
   { label: "Packages", icon: Package, href: "/staff/packages" },
   { label: "Rewards", icon: Gift, href: "/staff/rewards" },
@@ -129,7 +131,7 @@ export default function StaffAppShell({ activePath, role, children }: Props) {
           className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#07101f]/95 px-2 pt-2 backdrop-blur-xl lg:hidden"
           style={{ paddingBottom: "max(env(safe-area-inset-bottom), 10px)" }}
         >
-          <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
+          <div className="mx-auto grid max-w-lg grid-cols-6 gap-1">
             {navItems.map((item) => {
               const Icon = item.icon
               const active = item.href === activePath
