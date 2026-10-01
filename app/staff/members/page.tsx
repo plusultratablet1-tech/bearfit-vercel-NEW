@@ -22,7 +22,7 @@ export default async function StaffMembersPage() {
   const { data, error } = await supabase
     .from("members")
     .select(
-      "id,member_code,membership_id,name,full_name,email,phone,branch,package_name,package_type,status,membership_status,total_sessions,sessions_used,sessions_left,payment_status,last_paid_at,last_paid_amount,total_paid,join_date,is_demo",
+      "id,member_code,membership_id,name,full_name,email,phone,branch,coach_name,package_name,package_type,status,membership_status,total_sessions,sessions_used,sessions_left,payment_status,last_paid_at,last_paid_amount,total_paid,join_date,is_demo",
     )
     .order("full_name", { ascending: true })
 

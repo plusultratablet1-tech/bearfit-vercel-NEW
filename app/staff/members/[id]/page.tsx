@@ -27,6 +27,7 @@ type Member = {
   email: string | null
   phone: string | null
   branch: string | null
+  coach_name: string | null
   package_name: string | null
   package_type: string | null
   status: string | null
@@ -301,6 +302,7 @@ export default async function StaffMemberDetailPage({
           <div className="space-y-5">
             <Card title="Member details" icon={UserRound}>
               <Detail icon={MapPin} label="Branch" value={branch} />
+              <Detail icon={UserRound} label="Coach" value={member.coach_name || "Not assigned"} />
               <Detail icon={Package} label="Current package" value={packageDisplay} />
               <Detail icon={Mail} label="Email" value={member.email || "—"} />
               <Detail icon={Phone} label="Phone" value={member.phone || profile?.phone || "—"} />

@@ -23,6 +23,7 @@ export type MemberDirectoryItem = {
   email: string | null
   phone: string | null
   branch: string | null
+  coach_name: string | null
   package_name: string | null
   package_type: string | null
   status: string | null
@@ -38,7 +39,7 @@ export type MemberDirectoryItem = {
   is_demo: boolean | null
 }
 
-type GroupBy = "none" | "branch" | "package" | "sessions"
+type GroupBy = "none" | "branch" | "coach" | "package" | "sessions"
 
 function displayName(member: MemberDirectoryItem) {
   return member.full_name || member.name || member.email || member.member_code || "Member"
@@ -83,12 +84,17 @@ export default function StaffMembersPageClient({
 }) {
   const [search, setSearch] = useState("")
   const [branchFilter, setBranchFilter] = useState("ALL")
+  const [coachFilter, setCoachFilter] = useState("ALL")
   const [packageFilter, setPackageFilter] = useState("ALL")
   const [statusFilter, setStatusFilter] = useState("ALL")
   const [groupBy, setGroupBy] = useState<GroupBy>("none")
 
   const branches = useMemo(
     () => [...new Set(initialMembers.map((m) => m.branch).filter((v): v is string => Boolean(v)))].sort(),
+    [initialMembers],
+  )
+  const coaches = useMemo(
+    () => [...new Set(initialMembers.map((m) => m.coach_name).filter((v): v is string => Boolean(v)))].sort(),
     [initialMembers],
   )
   const packages = useMemo(
@@ -110,6 +116,7 @@ export default function StaffMembersPageClient({
         member.email,
         member.phone,
         member.branch,
+        member.coach_name,
         packageName(member),
       ]
         .filter(Boolean)
@@ -119,11 +126,12 @@ export default function StaffMembersPageClient({
       return (
         (!needle || haystack.includes(needle)) &&
         (branchFilter === "ALL" || member.branch === branchFilter) &&
+        (coachFilter === "ALL" || member.coach_name === coachFilter) &&
         (packageFilter === "ALL" || packageName(member) === packageFilter) &&
         (statusFilter === "ALL" || memberStatus(member) === statusFilter)
       )
     })
-  }, [initialMembers, search, branchFilter, packageFilter, statusFilter])
+  }, [initialMembers, search, branchFilter, coachFilter, packageFilter, statusFilter])
 
   const groups = useMemo(() => {
     if (groupBy === "none") return [["All Members", filtered] as const]
@@ -133,9 +141,11 @@ export default function StaffMembersPageClient({
       const key =
         groupBy === "branch"
           ? member.branch || "No branch"
-          : groupBy === "package"
-            ? packageName(member)
-            : sessionBucket(member)
+          : groupBy === "coach"
+            ? member.coach_name || "No coach"
+            : groupBy === "package"
+              ? packageName(member)
+              : sessionBucket(member)
       map.set(key, [...(map.get(key) ?? []), member])
     }
 
@@ -155,10 +165,11 @@ export default function StaffMembersPageClient({
       total: initialMembers.length,
       active,
       branches: branches.length,
+      coaches: coaches.length,
       lowSessions,
       paymentAttention,
     }
-  }, [initialMembers, branches])
+  }, [initialMembers, branches, coaches])
 
   return (
     <StaffAppShell activePath="/staff/members" role={role}>
@@ -167,7 +178,7 @@ export default function StaffMembersPageClient({
           <p className="text-xs font-bold uppercase tracking-[.2em] text-[#ff9b54]">People</p>
           <h1 className="mt-1 text-2xl font-black md:text-3xl">Members</h1>
           <p className="mt-1 text-sm text-white/45">
-            Browse individuals or group members by branch, package, and sessions remaining.
+            Browse individuals or group members by branch, coach, package, and sessions remaining.
           </p>
         </header>
 
@@ -177,16 +188,17 @@ export default function StaffMembersPageClient({
           </div>
         )}
 
-        <section className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <section className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
           <Stat icon={UsersRound} label="Members" value={stats.total} />
           <Stat icon={UsersRound} label="Active" value={stats.active} />
           <Stat icon={MapPin} label="Branches" value={stats.branches} />
+          <Stat icon={UsersRound} label="Coaches" value={stats.coaches} />
           <Stat icon={Dumbbell} label="0–3 Sessions" value={stats.lowSessions} />
           <Stat icon={AlertTriangle} label="Payment Attention" value={stats.paymentAttention} />
         </section>
 
         <section className="mt-5 rounded-[26px] border border-white/10 bg-[#101725] p-4 md:p-5">
-          <div className="grid gap-3 lg:grid-cols-[1fr_repeat(3,190px)]">
+          <div className="grid gap-3 lg:grid-cols-[1fr_repeat(4,170px)]">
             <label className="relative block">
               <Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-white/35" size={18} />
               <input
@@ -197,6 +209,7 @@ export default function StaffMembersPageClient({
               />
             </label>
             <Filter value={branchFilter} setValue={setBranchFilter} label="All branches" options={branches} />
+            <Filter value={coachFilter} setValue={setCoachFilter} label="All coaches" options={coaches} />
             <Filter value={packageFilter} setValue={setPackageFilter} label="All packages" options={packages} />
             <Filter value={statusFilter} setValue={setStatusFilter} label="All statuses" options={statuses} />
           </div>
@@ -206,6 +219,7 @@ export default function StaffMembersPageClient({
             {([
               ["none", "None"],
               ["branch", "Branch"],
+              ["coach", "Coach"],
               ["package", "Package"],
               ["sessions", "Sessions"],
             ] as const).map(([value, label]) => (
@@ -296,6 +310,7 @@ function MemberCard({ member }: { member: MemberDirectoryItem }) {
 
           <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
             <Info icon={MapPin} value={member.branch || "No branch"} />
+            <Info icon={UsersRound} value={member.coach_name ? `Coach ${member.coach_name}` : "No coach assigned"} />
             <Info icon={Package} value={pkg} />
             <Info icon={Dumbbell} value={`${left} / ${total} sessions left`} />
             <Info icon={CircleDollarSign} value={`Payment: ${payment}`} />
