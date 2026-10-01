@@ -7,6 +7,11 @@ import { SESSION_TAXONOMY, categoryForSessionLabel, displaySessionLabel, labelFo
 
 const supabase = createClient()
 
+type EligibilityNotice = {
+  warning_message?: string | null
+  blocking_reason?: string | null
+}
+
 type ConfirmedBooking = {
   id: string
   start_at: string
@@ -15,6 +20,9 @@ type ConfirmedBooking = {
   session_label: string | null
   branch: string
   member_package_id: string | null
+  package_name?: string | null
+  package_code?: string | null
+  sessions_left?: number | null
 }
 
 type PackageOption = {
@@ -25,16 +33,20 @@ type PackageOption = {
   sessions_left: number
   sessions_total: number
   expires_at: string | null
-  eligibility?: {
-    warning_message?: string | null
-    blocking_reason?: string | null
-  }
+  eligibility?: EligibilityNotice
 }
 
 type CheckinContext = {
   member: { id: string; member_code: string; name: string; branch: string }
   confirmed_bookings: ConfirmedBooking[]
   packages: PackageOption[]
+}
+
+type CheckinResult = {
+  member_name?: string
+  sessions_left?: number
+  already_checked_in?: boolean
+  eligibility?: EligibilityNotice | null
 }
 
 export default function CheckInPageClient({ role }: { role: "staff" | "admin" }) {
@@ -106,7 +118,7 @@ export default function CheckInPageClient({ role }: { role: "staff" | "admin" })
       const next = data as CheckinContext
       setContext(next)
       chooseDefaults(next)
-      setStatus(`✅ ${next.member.name} found. Confirm the booking or Package below before Check In.`)
+      setStatus(`✅ ${next.member.name} found. Only confirmed bookings inside the attendance window are shown below.`)
       setManualCode(memberCode)
     }
 
@@ -136,13 +148,17 @@ export default function CheckInPageClient({ role }: { role: "staff" | "admin" })
     if (error) {
       setStatus(`❌ ${error.message}`)
     } else {
-      const result = data as { member_name?: string; sessions_left?: number; already_checked_in?: boolean } | null
+      const result = data as CheckinResult | null
       const { data: refreshed } = await supabase.rpc("staff_checkin_context", {
         p_member_code: context.member.member_code,
       })
       const next = refreshed as CheckinContext | null
       const selectedPackage = next?.packages.find((item) => item.id === selectedPackageId)
-      const warning = selectedPackage?.eligibility?.warning_message || selectedPackage?.eligibility?.blocking_reason
+      const warning =
+        result?.eligibility?.warning_message ||
+        result?.eligibility?.blocking_reason ||
+        selectedPackage?.eligibility?.warning_message ||
+        selectedPackage?.eligibility?.blocking_reason
       const suffix = warning ? ` • ${warning}` : ""
       setStatus(
         result?.already_checked_in
@@ -200,6 +216,8 @@ export default function CheckInPageClient({ role }: { role: "staff" | "admin" })
     return new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Manila" }).format(new Date(value))
   }
 
+  const selectedBooking = context?.confirmed_bookings.find((booking) => booking.id === selectedBookingId) ?? null
+
   return (
     <main className="min-h-screen bg-[#020b1c] px-4 py-6 text-white">
       <div className="mx-auto max-w-5xl">
@@ -231,10 +249,23 @@ export default function CheckInPageClient({ role }: { role: "staff" | "admin" })
                     <label className="text-xs font-semibold uppercase tracking-wider text-white/55">Confirmed booking</label>
                     <select value={selectedBookingId} onChange={(e) => { const id=e.target.value; setSelectedBookingId(id); const booking=context.confirmed_bookings.find((item)=>item.id===id); if (booking) { if (booking.member_package_id) setSelectedPackageId(booking.member_package_id); setSelectedSessionLabel(booking.session_label ?? labelForServiceFallback(booking.session_type)) } else { setSelectedSessionLabel("Strength Training") } }} className="mt-2 w-full rounded-xl bg-[#202020] px-3 py-3">
                       <option value="">Manual package check-in</option>
-                      {context.confirmed_bookings.map((booking) => <option key={booking.id} value={booking.id}>{formatDate(booking.start_at)} • {displaySessionLabel(booking.session_label, booking.session_type)} • {booking.branch}</option>)}
+                      {context.confirmed_bookings.map((booking) => <option key={booking.id} value={booking.id}>{formatDate(booking.start_at)} • {displaySessionLabel(booking.session_label, booking.session_type)} • {booking.branch}{booking.package_name ? ` • ${booking.package_name}` : ""}</option>)}
                     </select>
+                    {context.confirmed_bookings.length === 0 && <p className="mt-2 text-xs text-white/45">No confirmed booking is currently inside the attendance window. Use Manual package check-in for a walk-in.</p>}
                   </div>
 
+                  {selectedBooking && (
+                    <div className="rounded-2xl border border-orange-300/20 bg-orange-300/5 p-4 text-sm">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div><p className="text-xs uppercase tracking-wider text-white/45">Session</p><p className="font-semibold">{displaySessionLabel(selectedBooking.session_label, selectedBooking.session_type)}</p></div>
+                        <div><p className="text-xs uppercase tracking-wider text-white/45">Date & time</p><p className="font-semibold">{formatDate(selectedBooking.start_at)}</p></div>
+                        <div><p className="text-xs uppercase tracking-wider text-white/45">Branch</p><p className="font-semibold">{selectedBooking.branch}</p></div>
+                        <div><p className="text-xs uppercase tracking-wider text-white/45">Package</p><p className="font-semibold">{selectedBooking.package_name ?? "Assigned package"}{selectedBooking.package_code ? ` (${selectedBooking.package_code})` : ""}</p></div>
+                      </div>
+                      <p className="mt-3 text-xs text-white/55">Sessions before check-in: {selectedBooking.sessions_left ?? "—"}</p>
+                      <p className="mt-1 text-xs font-semibold text-orange-300">Check-in window: 2 hours before start to 2 hours after end.</p>
+                    </div>
+                  )}
 
                   {!selectedBookingId && <div>
                     <label className="text-xs font-semibold uppercase tracking-wider text-white/55">Manual workout type</label>
