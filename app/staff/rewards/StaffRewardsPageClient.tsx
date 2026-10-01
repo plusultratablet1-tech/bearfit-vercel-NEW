@@ -1,6 +1,6 @@
 "use client"
 
-import Link from "next/link"
+import StaffAppShell from "@/components/bearfit/StaffAppShell"
 import { useState, type FormEvent } from "react"
 import { Archive, Check, Gift, PackagePlus, Pencil, X } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
@@ -89,8 +89,8 @@ export default function StaffRewardsPageClient({ role, initialSnapshot, initialE
   const pending = requests.filter(r => r.status === "pending")
   const approved = requests.filter(r => r.status === "approved")
 
-  return <main className="min-h-screen bg-[#020b1c] p-4 text-white md:p-8"><div className="mx-auto max-w-7xl">
-    <header className="mb-6 flex flex-wrap items-center justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[.2em] text-orange-300">BearFit {role}</p><h1 className="text-3xl font-black">Rewards Workspace</h1><p className="mt-1 text-sm text-white/45">Create real BearFit rewards and control every redemption.</p></div><div className="flex flex-wrap gap-2"><Link href="/staff/schedule" className="rounded-full bg-[#25324a] px-4 py-3 text-sm">Schedule</Link><Link href="/staff/packages" className="rounded-full bg-[#25324a] px-4 py-3 text-sm">Packages</Link><Link href="/payments" className="rounded-full bg-[#25324a] px-4 py-3 text-sm">Payments</Link><Link href="/checkin" className="rounded-full bg-[#ff7a1a] px-4 py-3 text-sm font-bold">Check-in</Link></div></header>
+  return <StaffAppShell activePath="/staff/rewards" role={role}><div className="mx-auto max-w-7xl px-4 py-5 pb-28 md:px-6 lg:px-8 lg:py-7 lg:pb-7">
+    <header className="mb-6 border-b border-white/10 pb-5"><p className="text-xs font-bold uppercase tracking-[.2em] text-orange-300">Operations</p><h1 className="mt-1 text-2xl font-black md:text-3xl">Rewards Workspace</h1><p className="mt-1 text-sm text-white/45">Create real BearFit rewards and control every redemption.</p></header>
     {error && <div className="mb-4 rounded-2xl bg-red-500/10 p-4 text-red-200">{error}</div>}{success && <div className="mb-4 rounded-2xl bg-emerald-500/10 p-4 text-emerald-200">{success}</div>}
 
     <section className="grid gap-6 xl:grid-cols-[390px_1fr]">
@@ -104,7 +104,7 @@ export default function StaffRewardsPageClient({ role, initialSnapshot, initialE
 
       <section className="rounded-[24px] border border-white/10 bg-[#141414] p-5"><div className="flex items-center gap-2"><Archive className="text-[#ff7a1a]"/><h2 className="text-xl font-bold">Request history</h2></div><div className="mt-4 space-y-2">{requests.length===0?<p className="text-sm text-white/45">No reward requests yet.</p>:requests.map(request=><div key={request.id} className="grid gap-2 rounded-2xl bg-white/[0.04] p-4 md:grid-cols-[1fr_auto] md:items-center"><div><b>{request.member_name}</b>{request.member_is_demo && <span className="ml-2 rounded-full bg-violet-500/15 px-2 py-1 text-[10px] font-bold text-violet-200">QA / Demo</span>}<span className="text-white/45"> · {request.reward_title}</span><p className="mt-1 text-xs text-white/40">{request.member_code} · {request.season_key} · {pts(request.points_cost)} pts · {fmt(request.requested_at)}</p></div><span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold capitalize">{request.status}</span></div>)}</div></section></div>
     </section>
-  </div></main>
+  </div></StaffAppShell>
 }
 
 function RequestCard({ request, note, setNote, working, onApprove, onReject }: { request: StaffRewardRequestItem; note: string; setNote:(v:string)=>void; working:boolean; onApprove:()=>void; onReject:()=>void }) { return <div className="rounded-2xl bg-white/5 p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><b>{request.member_name}</b>{request.member_is_demo && <span className="ml-2 rounded-full bg-violet-500/15 px-2 py-1 text-[10px] font-bold text-violet-200">QA / Demo</span>}<p className="text-xs text-white/45">{request.member_code} · {request.reward_title} · {pts(request.points_cost)} pts</p></div><span className="text-xs text-orange-300">{request.season_key}</span></div><input value={note} onChange={e=>setNote(e.target.value)} placeholder="Optional decision note" className="mt-3 w-full rounded-xl bg-[#242424] p-3 text-sm"/><div className="mt-3 flex gap-2"><button disabled={working} onClick={onApprove} className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold"><Check size={15}/>Approve</button><button disabled={working} onClick={onReject} className="flex items-center gap-2 rounded-xl bg-red-500/20 px-4 py-2.5 text-sm"><X size={15}/>Reject</button></div></div> }
