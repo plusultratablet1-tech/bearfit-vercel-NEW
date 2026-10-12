@@ -112,7 +112,7 @@ begin
  if p_response='unavailable' and char_length(btrim(coalesce(p_reason,''))) not between 5 and 500
  then raise exception 'Please give a reason (5-500 characters)'; end if;
  -- 8 PM Manila the evening before the scheduled shift's Manila date.
- v_deadline:=(((v_shift.starts_at at time zone 'Asia/Manila')::date - 1)::timestamp
+ v_deadline:=(((v_shift.starts_at at time zone 'Asia/Manila')::date - 1)
                + time '20:00') at time zone 'Asia/Manila';
  v_late:=now()>v_deadline;
  if v_shift.response<>'pending' and v_shift.response=p_response
