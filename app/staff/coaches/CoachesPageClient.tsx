@@ -205,6 +205,11 @@ export default function CoachesPageClient({ role }: { role: "admin" | "staff" })
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {role === "admin" && (
+                <Link href="/staff/coaches/attendance" className="inline-flex items-center gap-2 rounded-xl border border-orange-400/40 px-4 py-2.5 text-sm font-bold text-orange-200 hover:bg-orange-400/10">
+                  Attendance &amp; Shifts
+                </Link>
+              )}
+              {role === "admin" && (
                 <Link href="/staff/coaches/directory" className="inline-flex items-center gap-2 rounded-xl bg-[#ff7a1a] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#ff8b37]">
                   Coach Directory &amp; Rates
                 </Link>
