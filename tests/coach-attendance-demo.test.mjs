@@ -6,6 +6,7 @@ import { createRequire } from "node:module"
 
 const dataFile = fs.readFileSync("lib/coach-attendance-demo.ts","utf8")
 const admin = fs.readFileSync("app/staff/coaches/attendance/CoachAttendanceAdminClient.tsx","utf8")
+const board = fs.readFileSync("lib/coach-attendance-board.ts","utf8")
 
 // Compile the presentation-only fixture for runtime tests without starting Next.js
 // or issuing a database request.
@@ -103,7 +104,7 @@ test("sample mode visually distinguishes fictional metrics and conductions",()=>
 })
 
 test("a late check-in becomes an alert while maintaining verified attendance status",()=>{
-  assert.match(admin,/Date\.parse\(p\.clock_in_at\)>Date\.parse\(w\.starts_at\)\+15\*60000/)
-  assert.match(admin,/Late clock-in/)
+  assert.match(board,/Date\.parse\(punch\.clock_in_at\) > start \+ 15 \* 60_000/)
+  assert.match(board,/Late arrival/)
   assert.match(admin,/clock_in_at\?fmt\(p.clock_in_at\)/)
 })

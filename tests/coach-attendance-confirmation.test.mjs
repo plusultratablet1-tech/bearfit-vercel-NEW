@@ -5,6 +5,7 @@ import assert from "node:assert/strict"
 const sql=fs.readFileSync("supabase/migrations/20261012170000_coach_attendance_and_confirmations.sql","utf8")
 const coach=fs.readFileSync("app/coach/CoachHomeClient.tsx","utf8")
 const admin=fs.readFileSync("app/staff/coaches/attendance/CoachAttendanceAdminClient.tsx","utf8")
+const board=fs.readFileSync("lib/coach-attendance-board.ts","utf8")
 const adminPage=fs.readFileSync("app/staff/coaches/attendance/page.tsx","utf8")
 const overview=fs.readFileSync("app/staff/coaches/CoachesPageClient.tsx","utf8")
 
@@ -22,7 +23,7 @@ test("02 previous-day deadline is Manila 8 PM",()=>{
 test("03 late responses are marked late rather than reclassified absent",()=>{
  assert.match(sql,/'late',v_late/)
  assert.match(coach,/result\.late/)
- assert.match(admin,/Unconfirmed — 8PM passed/)
+ assert.match(board,/Unconfirmed — 8PM passed/)
 })
 test("04 coach cannot respond for another coach or inactive login",()=>{
  assert.match(sql,/user_id=\(select auth\.uid\(\)\) and is_active/)
@@ -79,7 +80,7 @@ test("14 admin is the only shift planner and coaches cannot self-schedule",()=>{
 test("15 admin dashboard monitors response and verified punches",()=>{
  assert.match(admin,/coach_work_shifts/)
  assert.match(admin,/coach_shifts/)
- assert.match(admin,/no verified clock-in/i)
+ assert.match(board,/No verified arrival|Missing time-in/i)
  assert.match(overview,/\/staff\/coaches\/attendance/)
 })
 test("16 coach sees only own linked assigned bookings",()=>{
