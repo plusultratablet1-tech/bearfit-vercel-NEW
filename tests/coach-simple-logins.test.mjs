@@ -78,7 +78,7 @@ test("coach password can be updated without admin access",()=>{
   assert.match(coachClient,/password\.length < 12/)
 })
 test("admin creates/rotates passwords without storing password in tables",()=>{
-  assert.match(directory,/provisionLogin\(coach, action/)
+  assert.match(directory,/async function provisionLogin\(coach: Coach, action:/)
   assert.match(directory,/Create coach login/)
   assert.match(directory,/Reset coach password/)
   assert.match(directory,/setCredentials\(null\)/)
