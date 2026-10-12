@@ -1,9 +1,10 @@
 "use client"
 import Link from "next/link"
 import { useCallback, useEffect, useState, type FormEvent } from "react"
-import { AlertTriangle, ArrowLeft, CalendarDays, Clock3, RefreshCw, ShieldCheck, UsersRound } from "lucide-react"
+import { AlertTriangle, ArrowLeft, CalendarDays, Clock3, RefreshCw, ShieldCheck, UsersRound, FlaskConical, Database } from "lucide-react"
 import StaffAppShell from "@/components/bearfit/StaffAppShell"
 import { createClient } from "@/lib/supabase/client"
+import { buildCoachAttendanceDemo } from "@/lib/coach-attendance-demo"
 
 const supabase=createClient()
 type Coach={id:string;display_name:string;branch:string;username:string|null;user_id:string|null;is_active:boolean}
@@ -28,6 +29,8 @@ function dateInput(offsetDays:number) {
 function description(w:Plan,p:Punch|undefined,now:number) {
   if(w.response==="unavailable")return {label:"Cannot report",danger:true}
   if(w.response==="pending"&&now>=Date.parse(atTomorrowEight(w.starts_at)))return {label:"Unconfirmed — 8PM passed",danger:true}
+  if(p?.clock_in_at && Date.parse(p.clock_in_at)>Date.parse(w.starts_at)+15*60000)
+    return {label:p.clock_out_at?"Completed — late arrival":"Late clock-in",danger:true}
   if(p?.clock_in_at&&!p.clock_out_at)return {label:"Clocked in",danger:false}
   if(p?.clock_out_at)return {label:"Shift completed",danger:false}
   if(now>Date.parse(w.starts_at)+15*60000 && now<Date.parse(w.ends_at)+86400000)return {label:"No verified clock-in",danger:true}
@@ -35,6 +38,9 @@ function description(w:Plan,p:Punch|undefined,now:number) {
   return {label:"Awaiting response",danger:false}
 }
 export default function CoachAttendanceAdminClient() {
+  // Explicit UI-only demo: these records have non-UUID IDs and can never be submitted to live RPCs.
+  const [demoMode,setDemoMode]=useState(true)
+  const [sample,setSample]=useState(()=>buildCoachAttendanceDemo(new Date()))
   const [coaches,setCoaches]=useState<Coach[]>([])
   const [plans,setPlans]=useState<Plan[]>([])
   const [punches,setPunches]=useState<Punch[]>([])
@@ -70,6 +76,7 @@ export default function CoachAttendanceAdminClient() {
   useEffect(()=>{void load()},[load])
   async function schedule(e:FormEvent<HTMLFormElement>){
     e.preventDefault()
+    if (demoMode) { setError("Switch to Live Data before creating a real shift."); return }
     if(!selectedCoach){setError("Choose a coach.");return}
     const startsAt=new Date(day+"T"+start+":00+08:00")
     const endsAt=new Date(day+"T"+end+":00+08:00")
@@ -85,6 +92,7 @@ export default function CoachAttendanceAdminClient() {
     else {setNotice("Shift assigned. Coach can now confirm it before 8:00 PM on the preceding day.");await load()}
   }
   async function issue(){
+    if (demoMode) { setError("Switch to Live Data before issuing an actual attendance code."); return }
     setBusy(true);setError("");setNotice("");setIssued(null)
     const {data,error:x}=await supabase.rpc("issue_coach_branch_code",{p_branch:branch})
     setBusy(false)
@@ -92,8 +100,11 @@ export default function CoachAttendanceAdminClient() {
     else {setIssued(data as Issued);setNotice("Attendance code issued. Display it at the branch reception for authorized coach time punches.")}
   }
   const now=Date.now()
-  const punchesByPlan=new Map(punches.filter(p=>p.work_shift_id).map(p=>[p.work_shift_id,p]))
-  const visible=plans.filter(w=>filter==="all"||w.branch===filter)
+  const displayCoaches:Coach[] = demoMode ? sample.coaches : coaches
+  const displayPlans:Plan[] = demoMode ? sample.plans : plans
+  const displayPunches:Punch[] = demoMode ? sample.punches : punches
+  const punchesByPlan=new Map(displayPunches.filter(p=>p.work_shift_id).map(p=>[p.work_shift_id,p]))
+  const visible=displayPlans.filter(w=>filter==="all"||w.branch===filter)
   const alerts=visible.filter(w=>description(w,punchesByPlan.get(w.id),now).danger)
   const card="rounded-[24px] border border-white/10 bg-[#141414] p-5"
   const field="w-full rounded-xl border border-white/10 bg-[#1b2434] px-3 py-2.5 text-sm"
@@ -104,22 +115,56 @@ export default function CoachAttendanceAdminClient() {
       <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
         <div><h1 className="text-2xl font-black md:text-3xl">Attendance & Shift Confirmations</h1>
           <p className="mt-1 text-sm text-white/55">Track who plans to report, who actually clocked in, and which shifts need attention.</p></div>
-        <button onClick={()=>void load()} className="flex items-center gap-2 rounded-xl border border-white/15 px-4 py-2.5 text-sm"><RefreshCw size={16}/> Refresh</button>
+        <button onClick={() => {
+          if (demoMode) setSample(buildCoachAttendanceDemo(new Date()))
+          else void load()
+        }} className="flex items-center gap-2 rounded-xl border border-white/15 px-4 py-2.5 text-sm"><RefreshCw size={16}/> Refresh</button>
       </div>
     </header>
-    {error&&<p role="alert" className="rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-200">{error}</p>}
-    {notice&&<p role="status" className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm text-emerald-200">{notice}</p>}
+    <section aria-label="Data preview mode" className={demoMode
+      ? "rounded-2xl border border-orange-400/30 bg-orange-400/10 p-4"
+      : "rounded-2xl border border-white/10 bg-[#101725] p-4"}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          {demoMode ? <FlaskConical className="mt-0.5 shrink-0 text-orange-300" size={22}/> :
+            <Database className="mt-0.5 shrink-0 text-emerald-300" size={22}/>}
+          <div>
+            <p className="text-sm font-bold">{demoMode ? "DEMO MODE — SAMPLE DATA ONLY" : "LIVE DATA — ACTUAL BEARFIT RECORDS"}</p>
+            <p className="mt-1 max-w-2xl text-xs text-white/65">
+              {demoMode
+                ? "Example coach shifts, confirmations, clock-in/out and conductions are shown for design review. No demo records are saved to Supabase, and all attendance actions are disabled."
+                : "Showing actual Supabase shifts and punches. Scheduling and attendance codes create real records."}
+            </p>
+          </div>
+        </div>
+        <div role="group" aria-label="Attendance data source" className="flex rounded-xl border border-white/15 bg-black/20 p-1">
+          <button type="button" aria-pressed={demoMode} onClick={()=>{setDemoMode(true);setSample(buildCoachAttendanceDemo(new Date()));setIssued(null);setError("");setNotice("")}}
+            className={demoMode?"rounded-lg bg-[#ff7a1a] px-4 py-2 text-sm font-bold text-white":"rounded-lg px-4 py-2 text-sm font-medium text-white/65"}>
+            Sample view
+          </button>
+          <button type="button" aria-pressed={!demoMode} onClick={()=>{setDemoMode(false);setError("");setNotice("");void load()}}
+            className={!demoMode?"rounded-lg bg-emerald-700 px-4 py-2 text-sm font-bold text-white":"rounded-lg px-4 py-2 text-sm font-medium text-white/65"}>
+            Live data
+          </button>
+        </div>
+      </div>
+    </section>
+    {error&&!demoMode&&<p role="alert" className="rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-200">{error}</p>}
+    {notice&&!demoMode&&<p role="status" className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm text-emerald-200">{notice}</p>}
     <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-      <Metric icon={UsersRound} label="Coach identities" count={coaches.length}/>
-      <Metric icon={CalendarDays} label="Planned shifts" count={visible.length}/>
-      <Metric icon={Clock3} label="Verified time-ins" count={visible.filter(w=>punchesByPlan.get(w.id)?.clock_in_at).length}/>
-      <Metric icon={AlertTriangle} label="Attention needed" count={alerts.length}/>
+      <Metric icon={UsersRound} label={demoMode?"Sample coaches":"Coach identities"} count={displayCoaches.length}/>
+      <Metric icon={CalendarDays} label={demoMode?"Sample shifts":"Planned shifts"} count={visible.length}/>
+      <Metric icon={Clock3} label={demoMode?"Sample time-ins":"Verified time-ins"} count={visible.filter(w=>punchesByPlan.get(w.id)?.clock_in_at).length}/>
+      <Metric icon={AlertTriangle} label={demoMode?"Sample alerts":"Attention needed"} count={alerts.length}/>
     </div>
     <div className="grid gap-4 lg:grid-cols-2">
       <section className={card}>
         <h2 className="text-lg font-bold">Plan coach shift</h2>
+        {demoMode&&<p className="mt-3 rounded-xl border border-orange-300/20 bg-orange-300/5 p-3 text-xs text-orange-100">
+          Planning is disabled in Sample view. Switch to Live data to create a real shift.
+        </p>}
         <p className="mt-2 text-sm text-white/50">Assign a real work shift. A booking alone does not confirm staff attendance.</p>
-        <form className="mt-4 grid grid-cols-2 gap-3" onSubmit={e=>void schedule(e)}>
+        <form className={"mt-4 grid grid-cols-2 gap-3 "+(demoMode?"pointer-events-none opacity-40":"")} onSubmit={e=>void schedule(e)}>
           <label className="col-span-2 text-xs text-white/55">Coach
             <select value={selectedCoach} onChange={e=>setSelectedCoach(e.target.value)} className={field+" mt-1"}>
               <option value="">Select coach</option>{coaches.filter(c=>c.is_active).map(c=><option key={c.id} value={c.id}>{c.display_name} · {c.branch}{!c.user_id?" (login not created)":""}</option>)}
@@ -134,7 +179,7 @@ export default function CoachAttendanceAdminClient() {
           <label className="text-xs text-white/55">End
             <input className={field+" mt-1"} type="time" value={end} onChange={e=>setEnd(e.target.value)}/>
           </label>
-          <button disabled={busy||!selectedCoach} className="col-span-2 rounded-xl bg-[#ff7a1a] px-4 py-3 text-sm font-bold disabled:opacity-40">Assign shift</button>
+          <button disabled={demoMode||busy||!selectedCoach} className="col-span-2 rounded-xl bg-[#ff7a1a] px-4 py-3 text-sm font-bold disabled:opacity-40">Assign shift</button>
         </form>
       </section>
       <section className={card}>
@@ -145,8 +190,9 @@ export default function CoachAttendanceAdminClient() {
             {branches.map(b=><option key={b} value={b}>{b}</option>)}
           </select>
         </label>
-        <button disabled={busy} onClick={()=>void issue()} className="mt-3 rounded-xl bg-[#ff7a1a] px-4 py-2.5 text-sm font-bold disabled:opacity-40">Generate new branch code</button>
-        {issued&&<div className="mt-4 rounded-xl border border-orange-400/30 bg-orange-400/5 p-4">
+        <button disabled={demoMode||busy} onClick={()=>void issue()} className="mt-3 rounded-xl bg-[#ff7a1a] px-4 py-2.5 text-sm font-bold disabled:opacity-40">Generate new branch code</button>
+        {demoMode&&<p className="mt-3 rounded-xl border border-orange-300/20 bg-orange-300/5 p-3 text-xs text-orange-100">Demo preview — real attendance codes cannot be generated here.</p>}
+        {issued&&!demoMode&&<div className="mt-4 rounded-xl border border-orange-400/30 bg-orange-400/5 p-4">
           <p className="text-xs text-orange-200">On-site only · {issued.branch}</p>
           <p className="mt-2 select-all break-all font-mono text-3xl font-black tracking-widest">{issued.code}</p>
           <p className="mt-2 text-xs text-white/60">Expires {fmt(issued.expires_at)}. Reissue after expiry.</p>
@@ -160,9 +206,9 @@ export default function CoachAttendanceAdminClient() {
           <p className="mt-1 text-xs text-white/50">8:00 PM Manila previous day is the confirmation deadline. Alerts are in-app and calculated when viewed/refreshed.</p></div>
         <select value={filter} onChange={e=>setFilter(e.target.value)} className={field+" max-w-48"}><option value="all">All branches</option>{branches.map(b=><option key={b} value={b}>{b}</option>)}</select>
       </div>
-      {loading?<p className="mt-5 text-sm text-white/55">Loading records…</p>:visible.length===0?<p className="mt-5 text-sm text-white/55">No shifts have been planned for the selected period.</p>:
+      {loading&&!demoMode?<p className="mt-5 text-sm text-white/55">Loading records…</p>:visible.length===0?<p className="mt-5 text-sm text-white/55">No shifts have been planned for the selected period.</p>:
       <div className="mt-4 space-y-3">{visible.map(w=>{
-        const coach=coaches.find(c=>c.id===w.coach_id)
+        const coach=displayCoaches.find(c=>c.id===w.coach_id)
         const p=punchesByPlan.get(w.id)
         const status=description(w,p,now)
         return <article key={w.id} className="rounded-xl border border-white/10 bg-[#101725] p-4">
@@ -172,12 +218,19 @@ export default function CoachAttendanceAdminClient() {
               <p className="mt-1 text-xs text-white/50">Confirmed: {w.response==="confirmed"?"Yes":w.response==="unavailable"?"Cannot report":"No response"}{w.response_at?" · "+fmt(w.response_at):""}</p>
               <p className="mt-1 text-xs text-white/50">Time in: {p?.clock_in_at?fmt(p.clock_in_at):"Not recorded"} · Time out: {p?.clock_out_at?fmt(p.clock_out_at):"Not recorded"}</p>
               {w.unavailable_reason&&<p className="mt-1 text-xs text-amber-200">Coach reason: {w.unavailable_reason}</p>}
+              {demoMode&&<p className="mt-2 text-xs text-orange-200">
+                Sample member conductions today: {sample.sampleConductions[w.coach_id] ?? 0} · not payable
+              </p>}
             </div>
             <span className={status.danger?"rounded-full bg-red-400/10 px-3 py-1.5 text-xs font-bold text-red-200":"rounded-full bg-emerald-400/10 px-3 py-1.5 text-xs font-bold text-emerald-200"}>{status.label}</span>
           </div>
         </article>
       })}</div>}
-      <p className="mt-4 text-xs text-white/45">Missing a clock-in is flagged for review, not proof of absence. Login accounts must be provisioned in Coach Directory to let coaches respond.</p>
+      <p className="mt-4 text-xs text-white/45">
+        {demoMode
+          ? "All entries are fictional examples for testing this dashboard layout. No sample shift, coach response, attendance punch or conduction is stored or payable."
+          : "Missing a clock-in is flagged for review, not proof of absence. Login accounts must be provisioned in Coach Directory to let coaches respond."}
+      </p>
     </section>
   </div></StaffAppShell>
 }
