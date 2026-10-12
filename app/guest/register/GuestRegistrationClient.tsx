@@ -28,8 +28,8 @@ export default function GuestRegistrationClient({token}:{token:string}) {
   setLoading(false)
  },[valid])
  useEffect(()=>{void refresh()},[refresh])
- async function register(e:FormEvent<HTMLFormElement>){
-  e.preventDefault();setError("");setNotice("")
+ async function register(event:FormEvent<HTMLFormElement>){
+  event.preventDefault();setError("");setNotice("")
   if(!valid)return setError("Invalid invitation")
   if(!agree)return setError("You must accept the gym rules and waiver before registering.")
   setBusy(true)
