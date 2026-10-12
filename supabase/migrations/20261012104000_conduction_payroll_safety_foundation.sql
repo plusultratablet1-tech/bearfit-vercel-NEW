@@ -258,6 +258,21 @@ create trigger prevent_coach_payroll_audit_mutation
   before update or delete on public.coach_payroll_audit for each row
   execute function private.prevent_payroll_history_mutation();
 
+-- Any previously recorded payable source or historical rate must not be deleted.
+-- Corrections are new audited events/adjustments rather than destructive rewrites.
+create trigger prevent_coach_conduction_deletion
+  before delete on public.coach_conductions for each row
+  execute function private.prevent_payroll_history_mutation();
+create trigger prevent_coach_cutoff_deletion
+  before delete on public.coach_payroll_cutoffs for each row
+  execute function private.prevent_payroll_history_mutation();
+create trigger prevent_coach_shift_deletion
+  before delete on public.coach_shifts for each row
+  execute function private.prevent_payroll_history_mutation();
+create trigger prevent_coach_rate_history_mutation
+  before update or delete on public.coach_rate_history for each row
+  execute function private.prevent_payroll_history_mutation();
+
 alter table public.coach_shifts enable row level security;
 alter table public.coach_conductions enable row level security;
 alter table public.coach_payroll_cutoffs enable row level security;
