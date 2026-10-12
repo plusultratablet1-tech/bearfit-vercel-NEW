@@ -47,7 +47,8 @@ function encodeBytes(text:string):number[] {
     let n=0;for(let j=0;j<8;j++)n=n<<1|bits[i+j]
     bytes.push(n)
   }
-  while(bytes.length<DATA_BYTES)bytes.push(bytes.length%2===0?0xec:0x11)
+  let paddingIndex=0
+  while(bytes.length<DATA_BYTES)bytes.push((paddingIndex++%2)===0?0xec:0x11)
   return bytes
 }
 export function guestQrMatrix(text:string):boolean[][]{
