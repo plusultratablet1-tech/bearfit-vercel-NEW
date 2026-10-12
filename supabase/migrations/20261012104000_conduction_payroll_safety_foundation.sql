@@ -100,8 +100,17 @@ declare
   v_cutoff public.coach_payroll_cutoffs%rowtype;
   v_date date;
 begin
-  if tg_op='UPDATE' and (old.status='approved' or old.payroll_cutoff_id is not null) then
-    raise exception 'Approved or assigned conductions are immutable; use audited payroll adjustments';
+  if tg_op='UPDATE' and old.payroll_cutoff_id is not null then
+    raise exception 'Conductions already attached to payroll are immutable; use adjustments';
+  end if;
+  if tg_op='UPDATE' and old.status='approved' then
+    -- An approved attendance can be attached to its first cutoff exactly once.
+    -- Its coach, member, rate, session and approval evidence cannot change.
+    if new.payroll_cutoff_id is null or
+       (to_jsonb(new)-'payroll_cutoff_id'-'updated_at') <>
+       (to_jsonb(old)-'payroll_cutoff_id'-'updated_at') then
+      raise exception 'Approved conduction may only be assigned once to an eligible payroll cutoff';
+    end if;
   end if;
   select * into v_log from public.session_logs where id=new.session_log_id;
   if not found then raise exception 'Attendance session log not found'; end if;
@@ -163,8 +172,13 @@ create or replace function private.guard_coach_payroll_cutoff()
 returns trigger language plpgsql set search_path='' as $$
 begin
   if tg_op='UPDATE' then
-    if old.status in ('locked','paid') then
-      raise exception 'Locked or paid payroll cannot be modified in place';
+    if old.status='paid' then
+      raise exception 'Paid payroll cannot be modified in place';
+    end if;
+    if old.status='locked' and
+       (new.status<>'paid' or new.paid_at is null
+        or (to_jsonb(new)-'status'-'paid_at')<>(to_jsonb(old)-'status'-'paid_at')) then
+      raise exception 'Locked payroll may only transition once to paid';
     end if;
     if new.coach_id<>old.coach_id or new.period_start<>old.period_start or new.period_end<>old.period_end then
       raise exception 'Payroll cutoff identity and dates cannot be changed';
@@ -173,6 +187,7 @@ begin
       (old.status='open' and new.status in ('open','for_review'))
       or (old.status='for_review' and new.status in ('for_review','approved','open'))
       or (old.status='approved' and new.status in ('approved','locked','for_review'))
+      or (old.status='locked' and new.status='paid')
     ) then
       raise exception 'Invalid payroll approval transition';
     end if;
