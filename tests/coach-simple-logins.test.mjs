@@ -87,3 +87,14 @@ test("no coach action touches member deductions or payroll",()=>{
   assert.doesNotMatch(migration,/update public\.(members|member_package_cycles|session_logs)/)
   assert.doesNotMatch(route,/\.from\("(bookings|session_logs|coach_conductions|coach_payroll_cutoffs)"\)/)
 })
+
+
+test("coach signup creates only profile and no fake member",()=>{
+  const reserved=migration.indexOf("if lower(split_part(new.email,'@',2)) = 'accounts.bearfit.invalid'")
+  const coachProfile=migration.indexOf("insert into public.profiles(id,role,member_id,full_name,phone)")
+  const memberInsert=migration.indexOf("insert into public.members(user_id,name,full_name,email,phone)")
+  assert.ok(reserved>=0 && coachProfile>reserved && memberInsert>coachProfile)
+  assert.match(migration,/values\(new.id,'coach',null,v_full_name,v_phone\)/)
+  assert.match(migration,/Reserved coach logins must be provisioned by BearFit Admin/)
+  assert.match(migration,/values\(new.id,'member',v_member_id/)
+})
