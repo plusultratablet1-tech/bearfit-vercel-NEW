@@ -29,8 +29,8 @@ export default function MemberGuestsClient({branch,memberActive}:{branch:string;
   if(e)setError(e.message);else setPast((data||[]) as Invite[])
  }
  useEffect(()=>{void load()},[])
- async function create(e:FormEvent<HTMLFormElement>){
-  e.preventDefault();setError("");setMessage("");setInvite(null);setCopied(false)
+ async function create(event:FormEvent<HTMLFormElement>){
+  event.preventDefault();setError("");setMessage("");setInvite(null);setCopied(false)
   if(!memberActive||!branch)return setError("An active linked membership is required.")
   setBusy(true)
   const {data,error:e}=await supabase.rpc("member_invite_guest",{p_branch:branch,p_visit_day:day,p_purpose:purpose})
