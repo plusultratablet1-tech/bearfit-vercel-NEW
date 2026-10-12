@@ -203,9 +203,16 @@ export default function CoachesPageClient({ role }: { role: "admin" | "staff" })
               <h1 className="text-2xl font-black md:text-3xl">Coaches</h1>
               <p className="mt-1 max-w-3xl text-sm text-white/50">Review coach schedules, recorded sessions, availability and gaps by day, week or month.</p>
             </div>
-            <button onClick={() => setRefreshId((v) => v + 1)} className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-4 py-2.5 text-sm font-semibold hover:bg-white/5" type="button">
+            <div className="flex flex-wrap items-center gap-2">
+              {role === "admin" && (
+                <Link href="/staff/coaches/directory" className="inline-flex items-center gap-2 rounded-xl bg-[#ff7a1a] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#ff8b37]">
+                  Coach Directory &amp; Rates
+                </Link>
+              )}
+              <button onClick={() => setRefreshId((v) => v + 1)} className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-4 py-2.5 text-sm font-semibold hover:bg-white/5" type="button">
               <RefreshCw size={16} /> Refresh
             </button>
+            </div>
           </div>
         </header>
 
