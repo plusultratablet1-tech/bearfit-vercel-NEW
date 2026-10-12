@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import StaffAppShell from "@/components/bearfit/StaffAppShell"
 import { useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 
@@ -125,22 +126,12 @@ export default function StaffPackagesPageClient({
   }
 
   return (
-    <main className="min-h-screen bg-[#020b1c] px-4 py-6 text-white">
-      <div className="mx-auto max-w-7xl">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-5">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[.2em] text-[#ff9b54]">BearFit Staff</p>
-            <h1 className="text-3xl font-black">Package Settings</h1>
-            <p className="mt-1 text-sm text-white/45">Prices are guidance. Session rules stay protected.</p>
-          </div>
-          <div className="flex gap-2">
-            <Link href="/staff/schedule" className="rounded-full bg-white/10 px-4 py-2 text-sm">
-              Schedule
-            </Link>
-            <Link href="/payments" className="rounded-full bg-[#ff7a1a] px-4 py-2 text-sm font-bold">
-              Payments
-            </Link>
-          </div>
+    <StaffAppShell activePath="/staff/packages" role={role}>
+      <div className="mx-auto max-w-7xl px-4 py-5 pb-28 md:px-6 lg:px-8 lg:py-7 lg:pb-7">
+        <header className="border-b border-white/10 pb-5">
+          <p className="text-xs font-bold uppercase tracking-[.2em] text-[#ff9b54]">Operations</p>
+          <h1 className="mt-1 text-2xl font-black md:text-3xl">Package Settings</h1>
+          <p className="mt-1 text-sm text-white/45">Prices are guidance. Session rules stay protected.</p>
         </header>
 
         {error && <div className="mt-4 rounded-2xl bg-red-500/10 p-4 text-red-200">{error}</div>}
@@ -237,7 +228,7 @@ export default function StaffPackagesPageClient({
           ))}
         </section>
       </div>
-    </main>
+    </StaffAppShell>
   )
 }
 

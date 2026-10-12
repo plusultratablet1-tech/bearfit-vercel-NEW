@@ -1,6 +1,6 @@
 "use client"
 
-import Link from "next/link"
+import StaffAppShell from "@/components/bearfit/StaffAppShell"
 import { useEffect, useState, type FormEvent } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { SESSION_TAXONOMY, categoryForSessionLabel, displaySessionLabel } from "@/lib/session-taxonomy"
@@ -99,8 +99,8 @@ export default function StaffSchedulePageClient({ role, currentUserId }: { role:
   }
 
   const openSlots = slots.filter(s => s.status === "open")
-  return <main className="min-h-screen bg-[#020b1c] p-4 text-white md:p-8"><div className="mx-auto max-w-7xl">
-    <header className="mb-6 flex flex-wrap justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[.2em] text-orange-300">BearFit {role}</p><h1 className="text-3xl font-extrabold">Schedule Workspace</h1></div><div className="flex flex-wrap gap-2"><Link href="/staff/rewards" className="rounded-full bg-[#25324a] px-4 py-3 text-sm">Rewards</Link><Link href="/staff/packages" className="rounded-full bg-[#25324a] px-4 py-3 text-sm">Packages</Link><Link href="/payments" className="rounded-full bg-[#25324a] px-4 py-3 text-sm">Payments</Link><Link href="/checkin" className="rounded-full bg-[#ff7a1a] px-4 py-3 text-sm font-bold">Check-in</Link></div></header>
+  return <StaffAppShell activePath="/staff/schedule" role={role}><div className="mx-auto max-w-7xl px-4 py-5 pb-28 md:px-6 lg:px-8 lg:py-7 lg:pb-7">
+    <header className="mb-6 border-b border-white/10 pb-5"><p className="text-xs font-bold uppercase tracking-[.2em] text-orange-300">Operations</p><h1 className="mt-1 text-2xl font-extrabold md:text-3xl">Schedule Workspace</h1><p className="mt-1 text-sm text-white/45">Manage availability, bookings, coaches, and attendance.</p></header>
     {error && <div className="mb-4 rounded-2xl bg-red-500/10 p-4 text-red-200">{error}</div>}{success && <div className="mb-4 rounded-2xl bg-emerald-500/10 p-4 text-emerald-200">{success}</div>}
 
     <section className="mb-6 grid gap-4 lg:grid-cols-2">
@@ -118,7 +118,7 @@ export default function StaffSchedulePageClient({ role, currentUserId }: { role:
     </div> })}</div></div>
       <aside className="rounded-[24px] border border-white/10 bg-[#141414] p-5"><h2 className="text-xl font-bold">Upcoming slots</h2><div className="mt-4 space-y-3">{slots.slice(0, 12).map(s => <div key={s.id} className="rounded-2xl bg-white/5 p-4"><b>{displaySessionLabel(s.session_label, s.session_type)}</b><div className="text-xs text-white/50">{fmt(s.start_at)}</div><div className="text-xs text-white/45">{s.branch} · capacity {s.capacity}</div></div>)}</div></aside>
     </section>
-  </div></main>
+  </div></StaffAppShell>
 }
 function Inp({ v, set, ph, type = "text" }: { v: string; set: (v: string) => void; ph?: string; type?: string }) { return <input value={v} onChange={e => set(e.target.value)} placeholder={ph} type={type} className="rounded-xl bg-[#242424] p-3 text-sm"/> }
 function Sel({ v, set, children }: { v: string; set: (v: string) => void; children: React.ReactNode }) { return <select value={v} onChange={e => set(e.target.value)} className="rounded-xl bg-[#242424] p-3 text-sm">{children}</select> }

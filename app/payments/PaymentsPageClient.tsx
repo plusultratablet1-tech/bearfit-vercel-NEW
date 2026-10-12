@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react"
-import Link from "next/link"
+import StaffAppShell from "@/components/bearfit/StaffAppShell"
 import { createClient } from "@/lib/supabase/client"
 
 const supabase = createClient()
@@ -365,30 +365,12 @@ export default function PaymentsPageClient({
   }
 
   return (
-    <main className="min-h-screen bg-[#020b1c] px-4 py-6 text-white">
-      <div className="mx-auto max-w-7xl">
-        <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-sm uppercase tracking-[0.2em] text-orange-300">BearFit Staff</p>
-            <h1 className="text-3xl font-extrabold">Payments & Packages</h1>
-            <p className="mt-1 text-sm text-white/55">
-              Signed in as {role}. Package rules now control session credits.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link href="/staff/packages" className="rounded-full bg-[#25324a] px-5 py-3 text-sm font-semibold">
-              Packages
-            </Link>
-            <Link href="/staff/schedule" className="rounded-full bg-[#25324a] px-5 py-3 text-sm font-semibold">
-              Schedule
-            </Link>
-            <Link href="/checkin" className="rounded-full bg-[#25324a] px-5 py-3 text-sm font-semibold">
-              Check-in
-            </Link>
-            <Link href="/member/dashboard" className="rounded-full bg-[#ff7a1a] px-5 py-3 text-sm font-semibold">
-              Member Dashboard
-            </Link>
-          </div>
+    <StaffAppShell activePath="/payments" role={role}>
+      <div className="mx-auto max-w-7xl px-4 py-5 pb-28 md:px-6 lg:px-8 lg:py-7 lg:pb-7">
+        <header className="mb-6 border-b border-white/10 pb-5">
+          <p className="text-xs font-bold uppercase tracking-[.2em] text-orange-300">Operations</p>
+          <h1 className="mt-1 text-2xl font-extrabold md:text-3xl">Payments & Packages</h1>
+          <p className="mt-1 text-sm text-white/55">Signed in as {role}. Package rules control session credits.</p>
         </header>
 
         {error && (
@@ -601,7 +583,7 @@ export default function PaymentsPageClient({
           </div>
         </section>
       </div>
-    </main>
+    </StaffAppShell>
   )
 }
 

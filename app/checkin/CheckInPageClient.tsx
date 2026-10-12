@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import Link from "next/link"
+import StaffAppShell from "@/components/bearfit/StaffAppShell"
 import { createClient } from "@/lib/supabase/client"
 import { SESSION_TAXONOMY, categoryForSessionLabel, displaySessionLabel, labelForServiceFallback } from "@/lib/session-taxonomy"
 
@@ -219,15 +219,12 @@ export default function CheckInPageClient({ role }: { role: "staff" | "admin" })
   const selectedBooking = context?.confirmed_bookings.find((booking) => booking.id === selectedBookingId) ?? null
 
   return (
-    <main className="min-h-screen bg-[#020b1c] px-4 py-6 text-white">
-      <div className="mx-auto max-w-5xl">
-        <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-sm uppercase tracking-[0.2em] text-orange-300">BearFit {role}</p>
-            <h1 className="text-3xl font-extrabold">Member Check-In</h1>
-            <p className="mt-1 text-sm text-white/55">Lookup first, then confirm the booking/package that will consume exactly one session.</p>
-          </div>
-          <div className="flex gap-2"><Link href="/payments" className="rounded-full bg-[#25324a] px-5 py-3 text-sm font-semibold">Payments</Link><Link href="/staff/schedule" className="rounded-full bg-[#25324a] px-5 py-3 text-sm font-semibold">Schedule</Link><Link href="/member/dashboard" className="rounded-full bg-[#ff7a1a] px-5 py-3 text-sm font-semibold">Dashboard</Link></div>
+    <StaffAppShell activePath="/checkin" role={role}>
+      <div className="mx-auto max-w-5xl px-4 py-5 pb-28 md:px-6 lg:px-8 lg:py-7 lg:pb-7">
+        <header className="mb-6 border-b border-white/10 pb-5">
+          <p className="text-xs font-bold uppercase tracking-[.2em] text-orange-300">Operations</p>
+          <h1 className="mt-1 text-2xl font-extrabold md:text-3xl">Member Check-In</h1>
+          <p className="mt-1 text-sm text-white/55">Lookup first, then confirm the booking or package that consumes exactly one session.</p>
         </header>
 
         <section className="rounded-[28px] border border-white/10 bg-[#141414] p-5 md:p-6">
@@ -298,6 +295,6 @@ export default function CheckInPageClient({ role }: { role: "staff" | "admin" })
           </div>
         </section>
       </div>
-    </main>
+    </StaffAppShell>
   )
 }
