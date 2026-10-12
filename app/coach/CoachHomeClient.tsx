@@ -109,7 +109,7 @@ export default function CoachHomeClient({coach}:{coach:Coach|null}) {
   }
   async function changePassword(event:FormEvent<HTMLFormElement>){
     event.preventDefault();setError("");setNotice("")
-    if(password.length<12||password.length>128)return setError("Use at least 12 characters.")
+    if(password.length < 12||password.length>128)return setError("Use at least 12 characters.")
     if(password!==confirm)return setError("Passwords do not match.")
     setBusy("password")
     const {error:e}=await supabase.auth.updateUser({ password })
