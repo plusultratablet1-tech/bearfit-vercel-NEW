@@ -34,6 +34,7 @@ import {
   ShieldCheck,
   Trophy,
   User as UserIcon,
+  UsersRound,
 } from "lucide-react"
 
 const supabase = createClient()
