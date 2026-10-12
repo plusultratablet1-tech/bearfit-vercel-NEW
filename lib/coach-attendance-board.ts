@@ -97,6 +97,9 @@ export function evaluateShift(
   }
 }
 export function csvEscape(value: unknown): string {
-  const text = String(value ?? "")
+  // Excel and other spreadsheet programs may treat cells starting with these
+  // characters as executable formulas even when the cell is CSV-quoted.
+  const raw = String(value ?? "")
+  const text = /^[\s]*[=+@-]/.test(raw) ? "'" + raw : raw
   return '"' + text.replace(/"/g, '""') + '"'
 }
