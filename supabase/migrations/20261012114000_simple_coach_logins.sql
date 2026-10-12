@@ -47,3 +47,45 @@ grant execute on function public.admin_link_coach_account(uuid,uuid) to authenti
 -- They are not permitted to view other coaches' records or any pay rates.
 create policy coaches_select_own_login on public.coaches for select to authenticated
   using (user_id=(select auth.uid()));
+
+
+-- BearFit normally inserts a MEMBER and PROFILE for every auth signup.
+-- Restricted coach auth users must receive only a coach PROFILE.
+-- The reserved domain is forbidden to public email signup, including
+-- direct Auth API callers; only service-role-created coach logins can pass.
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql security definer set search_path=''
+as $$
+declare
+  v_member_id uuid;
+  v_member_code text;
+  v_full_name text;
+  v_phone text;
+begin
+  v_full_name := coalesce(nullif(trim(new.raw_user_meta_data ->> 'full_name'), ''), split_part(new.email, '@', 1), 'Member');
+  v_phone := nullif(trim(new.raw_user_meta_data ->> 'phone'), '');
+
+  if lower(split_part(new.email,'@',2)) = 'accounts.bearfit.invalid' then
+    if not coalesce((new.raw_app_meta_data ->> 'bearfit_coach_login')::boolean,false)
+       or lower(split_part(new.email,'@',1)) !~ '^coach[1-9][0-9]{0,5}$' then
+      raise exception 'Reserved coach logins must be provisioned by BearFit Admin';
+    end if;
+
+    insert into public.profiles(id,role,member_id,full_name,phone)
+    values(new.id,'coach',null,v_full_name,v_phone);
+    return new;
+  end if;
+
+  -- Existing member signup remains unchanged for real member emails.
+  insert into public.members(user_id,name,full_name,email,phone)
+  values(new.id,v_full_name,v_full_name,coalesce(new.email,''),v_phone)
+  returning id,member_code into v_member_id,v_member_code;
+
+  update public.members set membership_id=v_member_code where id=v_member_id;
+
+  insert into public.profiles(id,role,member_id,full_name,phone,membership_id)
+  values(new.id,'member',v_member_id,v_full_name,v_phone,v_member_code);
+
+  return new;
+end; $$;
