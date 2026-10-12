@@ -107,7 +107,7 @@ export default function CoachesPageClient({ role }: { role: "admin" | "staff" })
       setLoading(true)
       setError(null)
       const [p, m, b, s] = await Promise.all([
-        supabase.from("profiles").select("id,full_name,role,branch").in("role", ["staff", "admin"]).limit(1000),
+        supabase.from("profiles").select("id,full_name,role,branch").limit(1000),
         supabase.from("members").select("coach_name,branch").not("coach_name", "is", null).limit(1000),
         supabase.from("bookings")
           .select("id,status,branch,session_label,session_type,slot_id,start_at,end_at,requested_start_at,requested_duration_minutes,assigned_coach_user_id,requested_coach_user_id,members:members(full_name,member_code)")
@@ -155,6 +155,13 @@ export default function CoachesPageClient({ role }: { role: "admin" | "staff" })
         prior.rosterOnly = false
         if (p.branch && !prior.branches.includes(p.branch)) prior.branches.push(p.branch)
       } else map.set(key, { key, name, userId: p.id, branches: p.branch ? [p.branch] : [], rosterOnly: false })
+    })
+    const knownIds = new Set([...map.values()].map((coach) => coach.userId).filter(Boolean))
+    assigned.forEach((id) => {
+      if (!knownIds.has(id)) {
+        const key = "unlinked:" + id
+        map.set(key, { key, name: "Unlinked coach account", userId: id, branches: [], rosterOnly: false })
+      }
     })
     return [...map.values()].sort((a, b) => a.name.localeCompare(b.name))
   }, [roster, profiles, bookings, slots])
