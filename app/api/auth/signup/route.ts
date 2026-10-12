@@ -12,6 +12,11 @@ export async function POST(request: Request) {
       )
     }
 
+    // Coach login aliases are provisioned only by an authenticated Admin.
+    if (typeof email === "string" && email.trim().toLowerCase().endsWith("@accounts.bearfit.invalid")) {
+      return NextResponse.json({ error: "Coach accounts are created by BearFit Admin" }, { status: 403 })
+    }
+
     if (password.length < 6) {
       return NextResponse.json(
         { error: "Password must be at least 6 characters" },
