@@ -73,10 +73,10 @@ export default function GuestControlClient(){
   <header className="border-b border-white/10 pb-5">
    <p className="text-xs font-bold uppercase tracking-[.2em] text-orange-300">Admin / Access Control</p>
    <h1 className="mt-2 text-2xl font-black md:text-3xl">Guest Pass Control</h1>
-   <p className="mt-2 text-sm text-white/55">Track guest registrations, verified payments, official promotions and single-use arrivals. Coaches cannot authorize complimentary service.</p>
+   <p className="mt-2 text-sm text-white/55">Track guest registrations, verified payments, official promotions and single-use arrivals. Each active member can invite one first-time guest for a free gym-only visit per Philippine calendar month. Coaches cannot issue extra free visits.</p>
   </header>
   <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-   {[["Registrations",guests.filter(g=>g.registered_at).length],["Pending decisions",needAction],["Active passes",guests.filter(g=>g.status==="active").length],["Admitted guests",guests.filter(g=>g.status==="redeemed").length]].map(([label,value])=>
+   {[["Registrations",guests.filter(g=>g.registered_at).length],["Pending decisions",needAction],["Active passes",guests.filter(g=>g.status==="active").length],["Free guest passes",guests.filter(g=>g.purpose==="free_guest").length]].map(([label,value])=>
     <div key={label} className="rounded-2xl border border-white/10 bg-[#141414] p-4"><p className="text-xs text-white/55">{label}</p><p className="mt-2 text-2xl font-bold">{value}</p></div>)}
   </div>
   <section className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4 text-sm text-amber-100">
@@ -112,7 +112,7 @@ export default function GuestControlClient(){
      <div className="flex flex-wrap justify-between gap-2">
       <div><h3 className="font-bold">{g.guest_name||"Not registered"}</h3>
        <p className="mt-1 text-xs text-white/55">Host: {hostNames[g.host_member_id]||"Member"} · {g.branch} · {g.visit_day}</p>
-       <p className="mt-1 text-xs text-white/55">{g.purpose.replace(/_/g," ")} · Contact: {g.guest_phone||"not provided"}</p>
+       <p className="mt-1 text-xs text-white/55">{g.purpose==="free_guest"?"Monthly FREE · gym-only · host required":g.purpose.replace(/_/g," ")} · Contact: {g.guest_phone||"not provided"}</p>
       </div>
       <span className={"rounded-xl border px-3 py-1.5 text-xs font-semibold "+(g.status==="active"||g.status==="redeemed"?"border-emerald-400/25 text-emerald-300":"border-amber-400/20 text-amber-200")}>{g.status.replace(/_/g," ").toUpperCase()}</span>
      </div>
