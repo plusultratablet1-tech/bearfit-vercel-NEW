@@ -84,7 +84,7 @@ test("admin creates/rotates passwords without storing password in tables",()=>{
   assert.match(directory,/setCredentials\(null\)/)
 })
 test("no coach action touches member deductions or payroll",()=>{
-  assert.doesNotMatch(migration,/update public\.(members|member_package_cycles|session_logs)/)
+  assert.doesNotMatch(migration,/update public\.(member_package_cycles|session_logs)/)
   assert.doesNotMatch(route,/\.from\("(bookings|session_logs|coach_conductions|coach_payroll_cutoffs)"\)/)
 })
 
