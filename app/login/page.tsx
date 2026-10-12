@@ -52,7 +52,7 @@ export default function LoginPage() {
           {isSignup ? "Create account" : "Sign in"}
         </h1>
         <p className="text-sm text-muted-foreground mb-6">
-          {isSignup ? "Make your BearFit account" : "Access your BearFit account"}
+          {isSignup ? "Make your BearFit account" : "Access BearFit with email or a coach username"}
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -68,8 +68,9 @@ export default function LoginPage() {
           )}
 
           <input
-            type="email"
-            placeholder="Email"
+            type={isSignup ? "email" : "text"}
+            autoComplete="username"
+            placeholder={isSignup ? "Email" : "Email or Coach1"}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full rounded-lg border px-3 py-2"
