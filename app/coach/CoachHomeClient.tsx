@@ -12,12 +12,10 @@ type Conduction = { id: string; session_date: string; status: "pending" | "appro
 type Dashboard = { coach_id: string; name: string; username: string; branch: string; shifts: Shift[]; bookings: Booking[]; conductions: Conduction[] }
 type Preview = { member_name: string; member_code: string; booking_id: string; start_at: string; session_label: string | null; note: string }
 function format(v: string) { return new Intl.DateTimeFormat("en-PH", { timeZone:"Asia/Manila",dateStyle:"medium",timeStyle:"short" }).format(new Date(v)) }
-function dateOnly(v: string) { return new Intl.DateTimeFormat("en-CA", { timeZone:"Asia/Manila", year:"numeric",month:"2-digit",day:"2-digit" }).format(new Date(v)) }
-function countdownDeadline(shift: Shift) {
-  const shiftDate = dateOnly(shift.starts_at)
-  const deadline = new Date(Date.parse(shiftDate+"T12:00:00Z") - 24*60*60*1000)
-  const d = deadline.toISOString().slice(0,10)
-  return new Date(d+"T12:00:00Z").getTime() + 0 // display separate Manila date at 8 PM
+function dateOnly(v: string) {
+  const parts=new Intl.DateTimeFormat("en-US",{timeZone:"Asia/Manila",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date(v))
+  const p=(name:string)=>parts.find(x=>x.type===name)?.value||""
+  return p("year")+"-"+p("month")+"-"+p("day")
 }
 function deadlineLabel(shift: Shift) {
   const day = new Date(Date.parse(dateOnly(shift.starts_at)+"T12:00:00Z") - 86400000).toISOString().slice(0,10)
