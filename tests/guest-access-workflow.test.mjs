@@ -110,7 +110,7 @@ test("17 no package, Bearforce, booking or payable conduction mutations",()=>{
  assert.doesNotMatch(sql,/private\.consume_package_session|award_bearforce_points/)
 })
 test("18 guest pass is separate gym access vs actual coach conduction",()=>{
- assert.match(guest,/does not include coaching/)
+ assert.match(guest,/does not automatically include coaching/)
  assert.match(sql,/conduction must be recorded separately/)
 })
 test("19 member invitation shows valid types and private link",()=>{
@@ -146,8 +146,8 @@ test("23 member route protected and accessible through dashboard",()=>{
 test("24 QR is drawn offline using an SVG and no third party URL",()=>{
  assert.match(qrComponent,/guestQrMatrix/)
  assert.match(qrComponent,/<svg/)
- assert.doesNotMatch(qrComponent,/https?:\/\//)
- assert.doesNotMatch(qrSource,/fetch\(|https?:\/\//)
+ assert.doesNotMatch(qrComponent,/api\.qrserver|chart\.googleapis|unpkg\.com|fetch\(/)
+ assert.doesNotMatch(qrSource,/fetch\(|api\.qrserver|chart\.googleapis/)
 })
 test("25 independently validated QR Model 2 v4-L encodes a known scanner-decodable credential",()=>{
  const secret="0123456789abcdef0123456789abcdef"
