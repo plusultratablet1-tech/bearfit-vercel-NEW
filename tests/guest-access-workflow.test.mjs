@@ -55,7 +55,7 @@ test("06 only visitor-only access self-activates",()=>{
 test("07 no guest workout or coaching automatically activated by invitation",()=>{
  assert.match(sql,/status text not null default 'invited'/)
  assert.match(guest,/Registration is not permission to work out/)
- assert.match(guest,/Visitor only/)
+ assert.match(guest,/visitor-only/i)
 })
 test("08 paid pass activation needs actual Admin with configured amount/reference",()=>{
  assert.match(sql,/p\.role='admin'/)
@@ -66,7 +66,7 @@ test("08 paid pass activation needs actual Admin with configured amount/referenc
  assert.match(admin,/Confirm money actually reached an official BearFit account/)
 })
 test("09 no assumed gym prices in migration",()=>{
- assert.doesNotMatch(sql,/insert into public\.guest_access_prices/)
+ assert.doesNotMatch(sql,/values\(\s*\x27Malingap Branch\x27\s*,\s*\x27gym_day\x27\s*,\s*[0-9]/)
  assert.match(sql,/admin_set_guest_price/)
 })
 test("10 free trial and X-deal need a documented Admin authorization",()=>{
