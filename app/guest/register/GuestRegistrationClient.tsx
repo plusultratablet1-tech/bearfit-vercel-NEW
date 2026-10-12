@@ -46,7 +46,7 @@ export default function GuestRegistrationClient({token}:{token:string}) {
    <header className="border-b border-white/10 pb-5">
     <p className="text-xs font-bold uppercase tracking-[.2em] text-orange-300">BEARFIT / GUEST PASS</p>
     <h1 className="mt-2 text-3xl font-black">Welcome to BearFit</h1>
-    <p className="mt-2 text-sm text-white/60">All guests register individually. Registration is not permission to work out until an eligible pass becomes active.</p>
+    <p className="mt-2 text-sm text-white/60">All guests register individually. Registration is not permission to work out until an eligible pass becomes active. A gym day pass does not automatically include coaching.</p>
    </header>
    {error&&<p role="alert" className="rounded-xl border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-200">{error}</p>}
    {notice&&<p role="status" className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm text-emerald-200">{notice}</p>}
