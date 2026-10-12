@@ -106,6 +106,8 @@ test("17 addDay and shiftDay do not depend on browser locale timezone",()=>{
 test("18 exported spreadsheet values safely quote comma and formula-leading cells",()=>{
   assert.equal(csvEscape('Coach "A", E Rod'),'"Coach ""A"", E Rod"')
   assert.equal(csvEscape(null),'""')
+  assert.equal(csvEscape("=1+1"),'"\'=1+1"')
+  assert.equal(csvEscape("@cmd"),'"\'@cmd"')
 })
 test("19 redesigned monitor defaults to Today and has functional week/history tabs",()=>{
   assert.match(admin,/useState<Tab>\("today"\)/)
