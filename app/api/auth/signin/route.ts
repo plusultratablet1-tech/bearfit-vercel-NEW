@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { resolveLoginEmail } from "@/lib/coach-login";
 
 export async function POST(request: Request) {
   try {
@@ -7,7 +8,7 @@ export async function POST(request: Request) {
 
     if (!email || !password) {
       return NextResponse.json(
-        { error: "Email and password are required" },
+        { error: "Email or coach username and password are required" },
         { status: 400 }
       );
     }
@@ -15,7 +16,7 @@ export async function POST(request: Request) {
     const supabase = await createClient();
 
     const { data, error } = await supabase.auth.signInWithPassword({
-      email,
+      email: resolveLoginEmail(email),
       password,
     });
 

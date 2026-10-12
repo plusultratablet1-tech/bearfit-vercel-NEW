@@ -225,15 +225,16 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
 
           <div>
             <label className="block text-white/80 text-sm font-medium mb-2">
-              Email
+              {tab === "login" ? "Email or Coach Username" : "Email"}
             </label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
               <input
-                type="email"
+                type={tab === "login" ? "text" : "email"}
+                autoComplete="username"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                placeholder={tab === "login" ? "you@example.com or Coach1" : "you@example.com"}
                 className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-3 text-white placeholder-white/40 focus:outline-none focus:border-[#F37120]/50 focus:ring-1 focus:ring-[#F37120]/20"
                 required
               />

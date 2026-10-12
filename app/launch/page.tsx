@@ -23,6 +23,10 @@ export default async function LaunchPage() {
     redirect("/staff/schedule")
   }
 
+  if (role === "coach") {
+    redirect("/coach")
+  }
+
   if (role === "member") {
     redirect("/member/dashboard")
   }

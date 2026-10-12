@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/client"
 
 const supabase = createClient()
 type Coach = {
-  id: string; display_name: string; branch: string; user_id: string | null; is_active: boolean
+  id: string; display_name: string; branch: string; username: string | null; user_id: string | null; is_active: boolean
 }
 type Rate = {
   id: string; coach_id: string; per_conduction_rate: number; effective_from: string
@@ -41,15 +41,16 @@ export default function CoachDirectoryClient() {
   const [dateDraft, setDateDraft] = useState<Record<string, string>>({})
   const [branchDraft, setBranchDraft] = useState<Record<string, string>>({})
   const [userDraft, setUserDraft] = useState<Record<string, string>>({})
+  const [credentials, setCredentials] = useState<{ coach: string; username: string; temporaryPassword: string } | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
     const [c, r, p] = await Promise.all([
-      supabase.from("coaches").select("id,display_name,branch,user_id,is_active").order("display_name"),
+      supabase.from("coaches").select("id,display_name,branch,username,user_id,is_active").order("display_name"),
       supabase.from("coach_rate_history").select("id,coach_id,per_conduction_rate,effective_from")
         .order("effective_from", { ascending: false }),
-      supabase.from("profiles").select("id,full_name,branch").eq("role", "staff").order("full_name"),
+      supabase.from("profiles").select("id,full_name,branch").in("role", ["staff", "coach"]).order("full_name"),
     ])
     const failure = [c, r, p].filter((result) => result.error).map((result) => result.error?.message).join(" · ")
     if (failure) setError(failure)
@@ -140,6 +141,34 @@ export default function CoachDirectoryClient() {
     await load()
   }
 
+  async function provisionLogin(coach: Coach, action: "create" | "reset") {
+    if (!coach.username) return setError("Coach username must be assigned first.")
+    const label = action === "create" ? "Create" : "Reset password for"
+    if (!window.confirm(label + " " + coach.username + " (" + coach.display_name + ")? A new secure temporary password will be shown only once.")) return
+    setError(null); setNotice(null); setCredentials(null); setBusy(coach.id + ":login")
+    try {
+      const response = await fetch("/api/admin/coaches/provision", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({ coachId: coach.id, action }),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || "Unable to provision coach login")
+      setCredentials({
+        coach: coach.display_name,
+        username: result.username,
+        temporaryPassword: result.temporaryPassword,
+      })
+      setNotice("Coach login updated. Copy and privately share the temporary password before closing this message.")
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to provision coach login")
+    } finally {
+      setBusy(null)
+    }
+  }
+
   return <StaffAppShell activePath="/staff/coaches" role="admin">
     <div className="mx-auto max-w-7xl px-4 py-6 pb-28 md:px-6 lg:px-8 lg:pb-8">
       <Link href="/staff/coaches" className="inline-flex items-center gap-2 text-sm font-semibold text-white/60 hover:text-white">
@@ -162,6 +191,20 @@ export default function CoachDirectoryClient() {
       </p>
       {error && <p role="alert" className="mt-4 rounded-xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-200">{error}</p>}
       {notice && <p role="status" className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/10 p-4 text-sm text-emerald-200"><CheckCircle2 size={18}/>{notice}</p>}
+      {credentials && (
+        <section className="mt-4 rounded-2xl border border-amber-400/40 bg-[#392710] p-4">
+          <h2 className="font-bold text-amber-100">New coach login — copy now</h2>
+          <p className="mt-1 text-xs text-amber-100/80">This temporary password will disappear when this message closes or the page reloads. Share it privately, not in a public chat or screenshot.</p>
+          <p className="mt-3 text-sm text-white/70">{credentials.coach}</p>
+          <p className="mt-1 text-sm"><strong>Username:</strong> <span className="select-all font-mono">{credentials.username}</span></p>
+          <p className="mt-1 break-all text-sm"><strong>Temporary password:</strong> <span className="select-all font-mono">{credentials.temporaryPassword}</span></p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button type="button" onClick={() => void navigator.clipboard.writeText("Username: " + credentials.username + "\nTemporary password: " + credentials.temporaryPassword)}
+              className="rounded-xl bg-[#ff7a1a] px-4 py-2.5 text-sm font-bold">Copy credentials</button>
+            <button type="button" onClick={() => setCredentials(null)} className="rounded-xl border border-white/20 px-4 py-2.5 text-sm font-semibold">Close and clear</button>
+          </div>
+        </section>
+      )}
       <div className="mt-5 grid gap-3 sm:grid-cols-3">
         <Stat label="Coach identities" value={summary.total} />
         <Stat label="Linked accounts" value={summary.linked} />
@@ -192,12 +235,21 @@ export default function CoachDirectoryClient() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h3 className="text-xl font-black">{coach.display_name}</h3>
-                  <p className="mt-1 text-sm text-white/45">{coach.branch} · {coach.user_id ? "Linked staff account" : "Login not linked"}</p>
+                  <p className="mt-1 text-sm text-white/45">{coach.branch} · Username: {coach.username || "Not assigned"} · {coach.user_id ? "Login active" : "Login not provisioned"}</p>
                 </div>
                 <button type="button" disabled={busy !== null} onClick={() => void setActive(coach)}
                   className={coach.is_active ? "rounded-full bg-emerald-400/10 px-3 py-2 text-xs font-bold text-emerald-300" : "rounded-full bg-white/10 px-3 py-2 text-xs font-bold text-white/60"}>
                   {coach.is_active ? "Active · change" : "Inactive · change"}
                 </button>
+              </div>
+              <div className="mt-4 rounded-2xl border border-[#ff7a1a]/25 bg-[#ff7a1a]/5 p-4">
+                <p className="text-sm font-bold">Simple coach login</p>
+                <p className="mt-1 text-sm text-white/65">Username: <strong className="text-[#ff9b54]">{coach.username || "Not assigned"}</strong></p>
+                <p className="mt-1 text-xs text-white/50">A unique temporary password is generated on the server. No predictable or shared passwords.</p>
+                {coach.username && <button type="button" disabled={busy !== null} onClick={() => void provisionLogin(coach,coach.user_id ? "reset" : "create")}
+                  className="mt-3 rounded-xl bg-[#ff7a1a] px-4 py-2.5 text-sm font-bold disabled:opacity-40">
+                  {busy === coach.id + ":login" ? "Working…" : coach.user_id ? "Reset coach password" : "Create coach login"}
+                </button>}
               </div>
               <div className="mt-5 grid gap-4 lg:grid-cols-2">
                 <div className="rounded-2xl border border-white/10 bg-[#101725] p-4">
@@ -230,7 +282,7 @@ export default function CoachDirectoryClient() {
                     <p className="mt-2 text-xs text-white/45">Changing the coach branch does not move member records or bookings.</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-[#101725] p-4">
-                    <p className="flex items-center gap-2 text-sm font-bold"><Link2 size={16} className="text-[#ff7a1a]"/> Verified staff login</p>
+                    <p className="flex items-center gap-2 text-sm font-bold"><Link2 size={16} className="text-[#ff7a1a]"/> Linked coach/staff account</p>
                     <p className="mt-1 text-xs text-white/50">{coach.user_id ? linked?.full_name || "Linked ID (profile unavailable)" : "No login linked"}</p>
                     <div className="mt-3 flex gap-2">
                       <select aria-label={"Staff account for " + coach.display_name} value={userDraft[coach.id] ?? coach.user_id ?? ""}
@@ -242,7 +294,7 @@ export default function CoachDirectoryClient() {
                       <button type="button" disabled={busy !== null || (userDraft[coach.id] ?? coach.user_id ?? "") === (coach.user_id ?? "")}
                         onClick={() => void linkAccount(coach)} className="rounded-xl border border-white/15 px-4 py-2.5 text-xs font-bold disabled:opacity-30">Link</button>
                     </div>
-                    {staff.length === 0 && <p className="mt-2 flex items-center gap-2 text-xs text-amber-200"><CircleAlert size={14}/> No staff login accounts exist yet. Linking will become available after account setup.</p>}
+                    {staff.length === 0 && <p className="mt-2 flex items-center gap-2 text-xs text-amber-200"><CircleAlert size={14}/> No accounts available yet. Provision a coach username above.</p>}
                   </div>
                 </div>
               </div>
