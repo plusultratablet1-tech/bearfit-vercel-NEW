@@ -34,6 +34,7 @@ import {
   ShieldCheck,
   Trophy,
   User as UserIcon,
+  UsersRound,
 } from "lucide-react"
 
 const supabase = createClient()
@@ -376,6 +377,9 @@ export default function BearfitDashboardClient({
                 Welcome, <span className="font-extrabold text-white">{displayName}</span>
               </h1>
               <p className="mt-1 text-sm text-white/40">{userEmail || "Signed-in BearFit member"}</p>
+              <Link href="/member/guests" className="mt-4 inline-flex items-center gap-2 rounded-xl border border-[#ff7a1a]/30 bg-[#ff7a1a]/10 px-4 py-3 text-sm font-bold text-[#ff9b54] hover:bg-[#ff7a1a]/20">
+                <UsersRound size={18}/> Bring a Friend / Guest Pass <ChevronRight size={16}/>
+              </Link>
             </div>
 
             {loadError && (

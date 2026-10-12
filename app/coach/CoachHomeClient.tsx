@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { parseGuestCode } from "@/lib/guest-qr"
 import { CalendarDays, CheckCircle2, Clock3, ClipboardCheck, LogOut, QrCode, ShieldCheck, RefreshCw, LockKeyhole } from "lucide-react"
 
 const supabase = createClient()
@@ -11,6 +12,7 @@ type Booking = { id: string; start_at: string; end_at: string; branch: string; s
 type Conduction = { id: string; session_date: string; status: "pending" | "approved" | "rejected"; member_name: string }
 type Dashboard = { coach_id: string; name: string; username: string; branch: string; shifts: Shift[]; bookings: Booking[]; conductions: Conduction[] }
 type Preview = { member_name: string; member_code: string; booking_id: string; start_at: string; session_label: string | null; note: string }
+type GuestPreview = { status: string;guest_name:string;branch:string;purpose:string;permitted_service:string;visit_day:string }
 function format(v: string) { return new Intl.DateTimeFormat("en-PH", { timeZone:"Asia/Manila",dateStyle:"medium",timeStyle:"short" }).format(new Date(v)) }
 function dateOnly(v: string) {
   const parts=new Intl.DateTimeFormat("en-US",{timeZone:"Asia/Manila",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date(v))
@@ -35,6 +37,8 @@ export default function CoachHomeClient({coach}:{coach:Coach|null}) {
   const [reason,setReason]=useState<Record<string,string>>({})
   const [branchCode,setBranchCode]=useState("")
   const [memberCode,setMemberCode]=useState("")
+  const [guestCode,setGuestCode]=useState("")
+  const [guestPreview,setGuestPreview]=useState<GuestPreview|null>(null)
   const [preview,setPreview]=useState<Preview|null>(null)
   const [password,setPassword]=useState("")
   const [confirm,setConfirm]=useState("")
@@ -70,6 +74,8 @@ export default function CoachHomeClient({coach}:{coach:Coach|null}) {
           if(cancelled||!videoRef.current)return
           try{
             const codes=await d.detect(videoRef.current)
+            const guest=parseGuestCode(codes[0]?.rawValue??"")
+            if(guest){setGuestCode(guest);setGuestPreview(null);setScanner(false);return}
             const member=normalizeCode(codes[0]?.rawValue??"")
             if(member){setMemberCode(member);setScanner(false);return}
           }catch{}
@@ -96,6 +102,18 @@ export default function CoachHomeClient({coach}:{coach:Coach|null}) {
     if(e)setError(e.message)
     else {setNotice(action==="in"?"Verified clock-in recorded. Admin can see your arrival.":"Verified clock-out recorded. Admin can see your departure.");setBranchCode("");await refresh()}
     setBusy(null)
+  }
+  async function verifyGuest(redeem:boolean){
+    const token=parseGuestCode(guestCode)
+    if(!token){setError("Scan or paste a valid BearFit Guest QR credential.");return}
+    setBusy("guest");setError("");setNotice("")
+    const {data:result,error:e}=await supabase.rpc("coach_check_guest_pass",{p_token:token,p_redeem:redeem})
+    setBusy(null)
+    if(e){setGuestPreview(null);setError(e.message)}
+    else {
+      setGuestPreview(result as GuestPreview)
+      if(redeem){setGuestCode("");setNotice("Guest entry recorded. This pass cannot be reused.");}
+    }
   }
   async function memberLookup(event:FormEvent<HTMLFormElement>){
     event.preventDefault();setError("");setNotice("");setPreview(null)
@@ -202,6 +220,23 @@ export default function CoachHomeClient({coach}:{coach:Coach|null}) {
             <p className="mt-1 text-sm text-white/60">{format(preview.start_at)} · {preview.session_label||"Booked training"}</p>
             <p className="mt-2 text-xs text-amber-200">{preview.note}</p>
           </div>}
+        </section>
+        <section className={card}>
+          <h2 className="flex items-center gap-2 text-lg font-bold"><QrCode size={19} className="text-[#ff7a1a]"/> Guest admission</h2>
+          <p className="mt-2 text-sm text-white/55">Scan your guest's separate BearFit access QR with the camera above, or paste its credential here. You must first have a verified open clock-in at the same branch. Guest passes never deduct member sessions.</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <input aria-label="Guest QR credential" value={guestCode} onChange={e=>{setGuestCode(e.target.value);setGuestPreview(null)}}
+              placeholder="BEARFIT-GUEST:… or 32-digit code" className="min-w-0 flex-1 rounded-xl border border-white/15 bg-[#202020] px-3 py-3 text-sm"/>
+            <button type="button" disabled={busy!==null} onClick={()=>void verifyGuest(false)} className={btn}>Verify guest</button>
+          </div>
+          {guestPreview&&<div className="mt-4 rounded-xl border border-emerald-400/20 bg-emerald-500/5 p-4">
+            <p className="font-bold">{guestPreview.guest_name}</p>
+            <p className="mt-1 text-xs text-white/60">{guestPreview.branch} · {guestPreview.visit_day} · {guestPreview.purpose.replace(/_/g," ")}</p>
+            <p className="mt-2 text-sm text-emerald-200">{guestPreview.permitted_service}</p>
+            {guestPreview.status==="active"&&<button type="button" disabled={busy!==null} onClick={()=>void verifyGuest(true)} className={btn+" mt-3"}>Admit guest · Use pass once</button>}
+            {guestPreview.status==="redeemed"&&<p className="mt-2 text-sm">Entry recorded; do not admit a second person with this pass.</p>}
+          </div>}
+          <p className="mt-3 text-xs text-amber-200">A visitor-only pass is NOT gym or training authorization. For payments, trials and X-deals, only Admin can activate access.</p>
         </section>
         <section className={card}>
           <h2 className="flex items-center gap-2 text-lg font-bold"><ClipboardCheck size={19} className="text-[#ff7a1a]"/> My conductions</h2>

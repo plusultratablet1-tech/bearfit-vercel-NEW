@@ -14,6 +14,7 @@ import {
   ScanLine,
   ShieldCheck,
   UsersRound,
+  TicketCheck,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
@@ -24,6 +25,7 @@ const navItems = [
   { label: "Coaches", icon: ClipboardList, href: "/staff/coaches" },
   { label: "Check-In", icon: ScanLine, href: "/checkin" },
   { label: "Members", icon: UsersRound, href: "/staff/members" },
+  { label: "Guest Passes", icon: TicketCheck, href: "/staff/guests" },
   { label: "Payments", icon: CreditCard, href: "/payments" },
   { label: "Packages", icon: Package, href: "/staff/packages" },
   { label: "Rewards", icon: Gift, href: "/staff/rewards" },
