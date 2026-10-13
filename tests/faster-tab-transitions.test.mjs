@@ -58,7 +58,7 @@ test("07 proxy still verifies sessions on real page requests",()=>{
  assert.match(read("proxy.ts"),/updateSession\(request\)/)
 })
 test("08 no background prefetch of every data-heavy admin page",()=>{
- assert.match(staffFrame,/prefetch=\{item\.href==="\/staff\/schedule" \|\| item\.href==="\/staff\/members" \? true : undefined\}/)
+ assert.match(staffFrame,/prefetch=\{item\.href==="\/staff\/home" \|\| item\.href==="\/staff\/schedule" \|\| item\.href==="\/staff\/members" \? true : undefined\}/)
  assert.doesNotMatch(staffFrame,/prefetch=\{true\}/)
  assert.match(memberFrame,/prefetch=\{item\.href==="\/member\/schedule" \? true : undefined\}/)
 })
