@@ -5,10 +5,10 @@ alter table public.coaches add column if not exists is_demo boolean not null def
 alter table public.coaches drop constraint if exists coaches_demo_safety_check;
 alter table public.coaches add constraint coaches_demo_safety_check
  check (not is_demo or (is_active=false and user_id is null and username is null));
-insert into public.coaches(display_name,roster_key,branch,is_active,is_demo,user_id,username)
+insert into public.coaches(display_name,branch,is_active,is_demo,user_id,username)
  values
- ('[DEMO] Coach Mira Santos','DEMO_PRIMARK_PILATES','Primark Cainta',false,true,null,null),
- ('[DEMO] Coach Andre Reyes','DEMO_PRIMARK_STRENGTH','Primark Cainta',false,true,null,null)
+ ('[DEMO] Coach Mira Santos','Primark Cainta',false,true,null,null),
+ ('[DEMO] Coach Andre Reyes','Primark Cainta',false,true,null,null)
  on conflict (roster_key) do nothing;
 
 insert into public.members(
