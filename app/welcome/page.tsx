@@ -27,6 +27,20 @@ const DURATIONS_SECONDS = {
 // idle restart (seconds)
 const IDLE_RESTART_SECONDS = 60;
 
+// Pause the welcome video as soon as users navigate away from its slide.
+// This prevents a hidden looping video from consuming bandwidth and CPU.
+function WelcomeVideo({src,active}:{src:string;active:boolean}) {
+  const videoRef=useRef<HTMLVideoElement>(null)
+  useEffect(()=>{
+    const video=videoRef.current
+    if(!video)return
+    if(active){void video.play().catch(()=>{/* Browser may block autoplay */})}
+    else video.pause()
+  },[active])
+  return <video ref={videoRef} className="absolute inset-0 h-full w-full object-cover"
+    src={src} autoPlay muted loop playsInline preload="metadata"/>
+}
+
 export default function WelcomePage() {
   const slides: Slide[] = useMemo(
     () => [
@@ -235,15 +249,7 @@ export default function WelcomePage() {
               {/* Background */}
               {slide.video ? (
                 <>
-                  <video
-                    className="absolute inset-0 w-full h-full object-cover"
-                    src={slide.video}
-                    autoPlay
-                    muted
-                    loop
-                    playsInline
-                    preload="metadata"
-                  />
+                  <WelcomeVideo src={slide.video} active={active}/>
                   <div className="absolute inset-0 bg-black/45" />
                 </>
               ) : (
