@@ -95,3 +95,12 @@ test("16 no package payments guest or payroll logic touched by navigation refact
   assert.doesNotMatch(text,/update public\.|\.from\("payments"\)|\.rpc\("admin_/)
  }
 })
+
+
+test("17 member profile and package actions stay within persistent staff routes",()=>{
+ const details=read("app/staff/members/[id]/page.tsx")
+ const packages=read("app/staff/packages/StaffPackagesPageClient.tsx")
+ assert.match(details,/\/staff\/checkin/)
+ assert.match(details,/\/staff\/payments\?memberId=/)
+ assert.match(packages,/\/staff\/payments\?\$\{params\.toString\(\)\}/)
+})
