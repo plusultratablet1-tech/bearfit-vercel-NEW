@@ -20,9 +20,11 @@ const pages=[
 const staffFrame=read("components/bearfit/StaffPersistentShell.tsx")
 const memberFrame=read("components/bearfit/MemberPersistentShell.tsx")
 const proxy=read("lib/supabase/proxy.ts")
-test("01 staff auth is request-scoped React cache, not persistent process-level cache",()=>{
- assert.match(ctx,/import \{cache\} from "react"/)
- assert.match(ctx,/getStaffAccess = cache\(async \(\) =>/)
+test("01 staff auth supports request-local React cache with safe React 18 fallback",()=>{
+ assert.match(ctx,/import \* as React from "react"/)
+ assert.match(ctx,/reactRequestCache/)
+ assert.match(ctx,/getStaffAccess = typeof reactRequestCache==="function"/)
+ assert.match(ctx,/: loadVerifiedStaffAccess/)
  assert.doesNotMatch(ctx,/unstable_cache|use cache|localStorage|globalThis/)
 })
 test("02 shared staff layout and main staff pages reuse the same access helper",()=>{
