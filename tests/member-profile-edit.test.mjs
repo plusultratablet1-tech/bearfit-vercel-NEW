@@ -9,7 +9,8 @@ test("admin-only authorization checked inside DB before any member changes",()=>
  assert.match(sql,/role='admin'/)
  assert.match(sql,/Admin permission required/)
  assert.match(sql,/security definer set search_path=''/)
- assert.match(page,/account\?\.role!=="admin"/)
+ assert.match(page,/role!=="admin"/)
+ assert.match(page,/getStaffAccess\(\)/)
 })
 test("audit history recorded with old and new values, actor and reason",()=>{
  assert.match(sql,/member_profile_edit_events/)
