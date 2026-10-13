@@ -12,7 +12,7 @@ type Booking = { id: string; start_at: string; end_at: string; branch: string; s
 type Conduction = { id: string; session_date: string; status: "pending" | "approved" | "rejected"; member_name: string }
 type Dashboard = { coach_id: string; name: string; username: string; branch: string; shifts: Shift[]; bookings: Booking[]; conductions: Conduction[] }
 type Preview = { member_name: string; member_code: string; booking_id: string; start_at: string; session_label: string | null; note: string }
-type GuestPreview = { status: string;guest_name:string;branch:string;purpose:string;permitted_service:string;visit_day:string }
+type GuestPreview = { status: string;guest_name:string;branch:string;purpose:string;permitted_service:string;visit_day:string;hosting_member_name?:string;host_arrival_confirmed?:boolean }
 function format(v: string) { return new Intl.DateTimeFormat("en-PH", { timeZone:"Asia/Manila",dateStyle:"medium",timeStyle:"short" }).format(new Date(v)) }
 function dateOnly(v: string) {
   const parts=new Intl.DateTimeFormat("en-US",{timeZone:"Asia/Manila",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date(v))
@@ -39,6 +39,7 @@ export default function CoachHomeClient({coach}:{coach:Coach|null}) {
   const [memberCode,setMemberCode]=useState("")
   const [guestCode,setGuestCode]=useState("")
   const [guestPreview,setGuestPreview]=useState<GuestPreview|null>(null)
+  const [guestWitnessed,setGuestWitnessed]=useState(false)
   const [preview,setPreview]=useState<Preview|null>(null)
   const [password,setPassword]=useState("")
   const [confirm,setConfirm]=useState("")
@@ -75,7 +76,7 @@ export default function CoachHomeClient({coach}:{coach:Coach|null}) {
           try{
             const codes=await d.detect(videoRef.current)
             const guest=parseGuestCode(codes[0]?.rawValue??"")
-            if(guest){setGuestCode(guest);setGuestPreview(null);setScanner(false);return}
+            if(guest){setGuestCode(guest);setGuestPreview(null);setGuestWitnessed(false);setScanner(false);return}
             const member=normalizeCode(codes[0]?.rawValue??"")
             if(member){setMemberCode(member);setScanner(false);return}
           }catch{}
@@ -106,6 +107,9 @@ export default function CoachHomeClient({coach}:{coach:Coach|null}) {
   async function verifyGuest(redeem:boolean){
     const token=parseGuestCode(guestCode)
     if(!token){setError("Scan or paste a valid BearFit Guest QR credential.");return}
+    if(redeem&&guestPreview?.purpose==="free_guest"&&(!guestPreview.host_arrival_confirmed||!guestWitnessed)){
+      setError("The host must confirm arrival in their app, and you must visually verify BOTH people are present.");return
+    }
     setBusy("guest");setError("");setNotice("")
     const {data:result,error:e}=await supabase.rpc("coach_check_guest_pass",{p_token:token,p_redeem:redeem})
     setBusy(null)
@@ -225,7 +229,7 @@ export default function CoachHomeClient({coach}:{coach:Coach|null}) {
           <h2 className="flex items-center gap-2 text-lg font-bold"><QrCode size={19} className="text-[#ff7a1a]"/> Guest admission</h2>
           <p className="mt-2 text-sm text-white/55">Scan your guest's separate BearFit access QR with the camera above, or paste its credential here. You must first have a verified open clock-in at the same branch. Guest passes never deduct member sessions.</p>
           <div className="mt-4 flex flex-wrap gap-2">
-            <input aria-label="Guest QR credential" value={guestCode} onChange={e=>{setGuestCode(e.target.value);setGuestPreview(null)}}
+            <input aria-label="Guest QR credential" value={guestCode} onChange={e=>{setGuestCode(e.target.value);setGuestPreview(null);setGuestWitnessed(false)}}
               placeholder="BEARFIT-GUEST:… or 32-digit code" className="min-w-0 flex-1 rounded-xl border border-white/15 bg-[#202020] px-3 py-3 text-sm"/>
             <button type="button" disabled={busy!==null} onClick={()=>void verifyGuest(false)} className={btn}>Verify guest</button>
           </div>
@@ -233,10 +237,19 @@ export default function CoachHomeClient({coach}:{coach:Coach|null}) {
             <p className="font-bold">{guestPreview.guest_name}</p>
             <p className="mt-1 text-xs text-white/60">{guestPreview.branch} · {guestPreview.visit_day} · {guestPreview.purpose.replace(/_/g," ")}</p>
             <p className="mt-2 text-sm text-emerald-200">{guestPreview.permitted_service}</p>
-            {guestPreview.status==="active"&&<button type="button" disabled={busy!==null} onClick={()=>void verifyGuest(true)} className={btn+" mt-3"}>Admit guest · Use pass once</button>}
+            {guestPreview.status==="active"&&guestPreview.purpose==="free_guest"&&<>
+              <p className="mt-3 text-xs font-semibold text-orange-200">Monthly free guest gym-only benefit · NO personal training</p>
+              <p className="mt-1 text-xs text-white/70">Hosting member: <strong>{guestPreview.hosting_member_name||"Unknown"}</strong> · Member arrival confirmed: <strong>{guestPreview.host_arrival_confirmed?"Yes — recent":"Not yet"}</strong></p>
+              {!guestPreview.host_arrival_confirmed&&<p className="mt-2 text-xs text-amber-200">Ask the member to tap “Confirm we arrived together” in their BearFit app, then verify this pass again.</p>}
+              <label className="mt-3 flex items-start gap-2 rounded-xl border border-white/15 p-3 text-sm">
+               <input type="checkbox" checked={guestWitnessed} onChange={e=>setGuestWitnessed(e.target.checked)} className="mt-1 accent-orange-500"/>
+               I have personally checked that this first-time guest and their hosting member are BOTH physically present, and the guest is not receiving personal training.
+              </label>
+             </>}
+            {guestPreview.status==="active"&&<button type="button" disabled={busy!==null||(guestPreview.purpose==="free_guest"&&(!guestPreview.host_arrival_confirmed||!guestWitnessed))} onClick={()=>void verifyGuest(true)} className={btn+" mt-3"}>Admit guest · Use pass once</button>}
             {guestPreview.status==="redeemed"&&<p className="mt-2 text-sm">Entry recorded; do not admit a second person with this pass.</p>}
           </div>}
-          <p className="mt-3 text-xs text-amber-200">A visitor-only pass is NOT gym or training authorization. For payments, trials and X-deals, only Admin can activate access.</p>
+          <p className="mt-3 text-xs text-amber-200">A visitor-only pass is NOT gym or training authorization. Monthly free guest passes allow gym-only access, require an accompanying member, and cannot be used for personal training. Admin alone approves trials, X-deals and payments.</p>
         </section>
         <section className={card}>
           <h2 className="flex items-center gap-2 text-lg font-bold"><ClipboardCheck size={19} className="text-[#ff7a1a]"/> My conductions</h2>

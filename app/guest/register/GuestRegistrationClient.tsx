@@ -7,7 +7,7 @@ import GuestQRCode from "@/components/bearfit/GuestQRCode"
 
 const supabase=createClient()
 type Pass={status:string;purpose:string;branch:string;visit_day:string;guest_name:string|null;registered:boolean;permitted_service:string;price_php:number|null}
-const serviceName:Record<string,string>={visitor:"Visitor / accompanying only",gym_day:"Gym day pass",training:"Guest personal training",trial:"Trial workout request",xdeal:"Promotional X-deal request"}
+const serviceName:Record<string,string>={free_guest:"Monthly complimentary guest gym visit",visitor:"Visitor / accompanying only",gym_day:"Gym day pass",training:"Guest personal training",trial:"Trial workout request",xdeal:"Promotional X-deal request"}
 export default function GuestRegistrationClient({token}:{token:string}) {
  const valid=parseGuestCode(token)
  const [pass,setPass]=useState<Pass|null>(null)
@@ -38,7 +38,14 @@ export default function GuestRegistrationClient({token}:{token:string}) {
   })
   setBusy(false)
   if(e)setError(e.message)
-  else {setNotice(data.status==="active"?"Visitor-only pass activated. No workout permitted.":"Registration received. Wait for official payment verification or Admin approval.");await refresh()}
+  else {
+    setNotice(data.status==="active"?
+      (data.purpose==="free_guest"?
+      "Your FREE gym-only guest pass is active. Arrive with your hosting member, who must confirm arrival in their BearFit app. Personal training is excluded.":
+      "Visitor-only pass activated. No workout permitted."):
+      "Registration received. Wait for official payment verification or Admin approval.")
+    await refresh()
+   }
  }
  const active=pass?.status==="active"
  return <main className="min-h-screen bg-[#020b1c] px-4 py-9 text-white">
@@ -46,7 +53,7 @@ export default function GuestRegistrationClient({token}:{token:string}) {
    <header className="border-b border-white/10 pb-5">
     <p className="text-xs font-bold uppercase tracking-[.2em] text-orange-300">BEARFIT / GUEST PASS</p>
     <h1 className="mt-2 text-3xl font-black">Welcome to BearFit</h1>
-    <p className="mt-2 text-sm text-white/60">All guests register individually. Registration is not permission to work out until an eligible pass becomes active. A gym day pass does not automatically include coaching.</p>
+    <p className="mt-2 text-sm text-white/60">All guests register individually. A free monthly guest pass covers gym facilities only, not personal training, and your inviting member must come with you. A paid gym day pass also does not automatically include coaching. Registration is not permission to work out until your pass is active.</p>
    </header>
    {error&&<p role="alert" className="rounded-xl border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-200">{error}</p>}
    {notice&&<p role="status" className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm text-emerald-200">{notice}</p>}
@@ -85,7 +92,7 @@ export default function GuestRegistrationClient({token}:{token:string}) {
        <input type="checkbox" required checked={agree} onChange={e=>setAgree(e.target.checked)} className="mt-1 accent-orange-500"/>
        <span>I agree to follow BearFit facility rules and safety instructions, accept the risks normally associated with physical exercise, and understand that a visitor-only pass does not permit training. I understand that access is subject to the approved service and gym policies.</span>
       </label>
-      <p className="text-xs text-white/45">Your mobile number is recorded for visit administration, but is not yet verified by SMS. For minors, please contact BearFit Admin before participating in any activity.</p>
+      <p className="text-xs text-white/45">Free guests must use a valid Philippine mobile number and can claim only one complimentary visit or trial across BearFit branches. SMS verification is not enabled; the coach must check your identity upon entry. For minors, contact BearFit Admin before participating.</p>
       <button disabled={busy||!agree} className="w-full rounded-xl bg-[#ff7a1a] p-3.5 font-bold disabled:opacity-40">{busy?"Submitting…":"Register guest"}</button>
      </form>
     </section>}
@@ -94,6 +101,7 @@ export default function GuestRegistrationClient({token}:{token:string}) {
      <p className="mt-2 text-sm">{pass.guest_name}</p>
      <div className="mt-4 flex justify-center"><GuestQRCode token={valid}/></div>
      <p className="mt-3 text-sm text-white/80">Show this QR to an authorized BearFit coach during your permitted visit date.</p>
+     {pass.purpose==="free_guest"&&<p className="mt-3 rounded-lg border border-amber-400/20 p-3 text-xs text-amber-200">The member who invited you must arrive with you and tap “Confirm we arrived together” in their BearFit Member app within 10 minutes of admission. The coach will check that you are both present. Personal training is not included.</p>}
      <p className="mt-2 text-xs text-white/45">One use only · Correct branch and date required · Screenshot sharing is prohibited. Staff may verify your name.</p>
     </section>}
     {pass.status==="pending_payment"&&<div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-amber-100">
