@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import type { ReactNode } from "react"
 import {
   Bell,
@@ -32,6 +32,10 @@ type Props = {
 
 export default function MemberPersistentShell({ children }: Props) {
   const activePath = usePathname()
+  const router=useRouter()
+  // Preload likely next tabs, then expand to any destination on user intent.
+  // Access to all prefetched routes is still enforced server-side.
+
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     window.location.href = "/welcome"
@@ -65,6 +69,10 @@ export default function MemberPersistentShell({ children }: Props) {
                 <Link
                   key={item.label}
                   href={item.href}
+                  prefetch={item.href==="/member/schedule" ? true : undefined}
+                  onPointerEnter={()=>router.prefetch(item.href)}
+                  onFocus={()=>router.prefetch(item.href)}
+                  onTouchStart={()=>router.prefetch(item.href)}
                   className={`flex items-center gap-3 rounded-xl px-4 py-3.5 text-sm transition ${
                     active
                       ? "bg-[#ff7a1a] font-semibold text-white shadow-lg shadow-orange-950/30"
@@ -119,6 +127,10 @@ export default function MemberPersistentShell({ children }: Props) {
                 <Link
                   key={item.label}
                   href={item.href}
+                  prefetch={item.href==="/member/schedule" ? true : undefined}
+                  onPointerEnter={()=>router.prefetch(item.href)}
+                  onFocus={()=>router.prefetch(item.href)}
+                  onTouchStart={()=>router.prefetch(item.href)}
                   className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-semibold transition ${
                     active ? "bg-[#ff7a1a] text-white" : "text-white/55 active:bg-white/10 active:text-white"
                   }`}
