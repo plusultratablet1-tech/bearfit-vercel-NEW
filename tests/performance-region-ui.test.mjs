@@ -33,12 +33,13 @@ test("05 member dashboard protects on server",()=>{
  assert.match(member,/loadMemberAccountData\(user\.id\)/)
 })
 test("06 staff members still checks role",()=>{
- assert.match(directory,/supabase\.auth\.getUser\(\)/)
- assert.match(directory,/role !== "staff" && role !== "admin"/)
+ assert.match(directory,/getStaffAccess\(\)/)
+ assert.match(fs.readFileSync("lib/staff-access-server.ts","utf8"),/supabase\.auth\.getUser\(\)/)
+ assert.match(fs.readFileSync("lib/staff-access-server.ts","utf8"),/role!=="admin" && role!=="staff"/)
 })
 test("07 member detail still role protected",()=>{
- assert.match(profile,/supabase\.auth\.getUser\(\)/)
- assert.match(profile,/role !== "staff" && role !== "admin"/)
+ assert.match(profile,/getStaffAccess\(\)/)
+ assert.match(fs.readFileSync("lib/staff-access-server.ts","utf8"),/role!=="admin" && role!=="staff"/)
 })
 test("08 existing member loading skeleton retained",()=>{
  assert.match(memberLoader,/MemberRouteLoading/)

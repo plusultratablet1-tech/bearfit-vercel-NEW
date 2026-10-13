@@ -1,5 +1,6 @@
+import {getStaffAccess} from "@/lib/staff-access-server"
 import Link from "next/link"
-import { notFound, redirect } from "next/navigation"
+import { notFound } from "next/navigation"
 import {
   ArrowLeft,
   CalendarDays,
@@ -14,7 +15,6 @@ import {
   UserRound,
 } from "lucide-react"
 import StaffAppShell from "@/components/bearfit/StaffAppShell"
-import { createClient } from "@/lib/supabase/server"
 import { displaySessionLabel } from "@/lib/session-taxonomy"
 
 type Member = {
@@ -163,21 +163,7 @@ export default async function StaffMemberDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id: memberId } = await params
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) redirect("/login")
-
-  const { data: staffProfile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle()
-
-  const role = staffProfile?.role ?? "member"
-  if (role !== "staff" && role !== "admin") redirect("/member/dashboard")
+  const {supabase,role}=await getStaffAccess()
 
   const [memberResult, profileResult, cyclesResult, definitionsResult, sessionsResult, bookingsResult, paymentsResult, pointsResult] =
     await Promise.all([

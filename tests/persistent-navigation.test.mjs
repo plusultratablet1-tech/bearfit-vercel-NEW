@@ -3,6 +3,7 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 const read=(path)=>fs.readFileSync(path,"utf8")
 const staffLayout=read("app/staff/layout.tsx")
+const staffAccess=read("lib/staff-access-server.ts")
 const memberLayout=read("app/member/layout.tsx")
 const staffFrame=read("components/bearfit/StaffPersistentShell.tsx")
 const memberFrame=read("components/bearfit/MemberPersistentShell.tsx")
@@ -38,9 +39,10 @@ test("04 member shared frame owns only sidebar and mobile tab bar",()=>{
  assert.doesNotMatch(memberWrapper,/<aside|<nav/)
 })
 test("05 protected staff role is validated server-side",()=>{
- assert.match(staffLayout,/supabase\.auth\.getUser\(\)/)
- assert.match(staffLayout,/\.from\("profiles"\)\.select\("role"\)/)
- assert.match(staffLayout,/role!=="admin" && role!=="staff"/)
+ assert.match(staffLayout,/getStaffAccess\(\)/)
+ assert.match(staffAccess,/supabase\.auth\.getUser\(\)/)
+ assert.match(staffAccess,/\.from\("profiles"\)\.select\("role"\)/)
+ assert.match(staffAccess,/role!=="admin" && role!=="staff"/)
 })
 test("06 member page auth remains in existing server route",()=>{
  const page=read("app/member/dashboard/page.tsx")
@@ -70,10 +72,10 @@ test("10 staff Check-In and Payments main tabs remain in persistent layout",()=>
  assert.match(paymentAlias,/from "@\/app\/payments\/page"/)
 })
 test("11 original payment and checkin routes remain protected",()=>{
- assert.match(oldPayment,/supabase\.auth\.getUser\(\)/)
- assert.match(oldCheckin,/supabase\.auth\.getUser\(\)/)
- assert.match(oldPayment,/role !== "staff" && role !== "admin"/)
- assert.match(oldCheckin,/role !== "staff" && role !== "admin"/)
+ assert.match(oldPayment,/getStaffAccess\(\)/)
+ assert.match(oldCheckin,/getStaffAccess\(\)/)
+ assert.match(staffAccess,/role!=="admin" && role!=="staff"/)
+ assert.match(staffAccess,/role!=="admin" && role!=="staff"/)
 })
 test("12 legacy checkin/payment screens still show their navigation",()=>{
  assert.match(staffWrapper,/usePathname\(\)/)
