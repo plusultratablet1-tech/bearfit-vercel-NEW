@@ -54,14 +54,6 @@ type Props = {
   loadError: string | null
 }
 
-const navItems = [
-  { label: "Home", icon: Home, href: "/member/dashboard" },
-  { label: "Schedule", icon: CalendarDays, href: "/member/schedule" },
-  { label: "Rewards", icon: Gift, href: "/member/rewards" },
-  { label: "Payments", icon: CreditCard, href: "/member/payments" },
-  { label: "Profile", icon: UserIcon, href: "/member/profile" },
-]
-
 function formatDateTime(iso: string | null) {
   if (!iso) return "—"
   const date = new Date(iso)
@@ -264,87 +256,7 @@ export default function BearfitDashboardClient({
   void packageEligibility
 
   return (
-    <main className="min-h-screen bg-[#020b1c] text-white">
-      <div className="flex min-h-screen">
-        <aside className="hidden w-[230px] shrink-0 flex-col border-r border-white/10 bg-[#020817] lg:flex">
-          <div className="p-5">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#1f2c45] text-xs font-extrabold text-[#ff7a1a]">
-                BF
-              </div>
-              <div>
-                <p className="text-lg font-extrabold tracking-wide">BEARFIT</p>
-                <p className="text-[11px] font-medium text-orange-300">Better fitness.</p>
-              </div>
-            </div>
-            <div className="mt-5 inline-flex items-center rounded-full border border-[#ff7a1a]/30 bg-[#ff7a1a]/15 px-3 py-1.5 text-xs font-semibold text-[#ff9b54]">
-              Member
-            </div>
-          </div>
-
-          <nav className="flex-1 space-y-2 border-t border-white/10 px-3 py-4">
-            {navItems.map((item) => {
-              const Icon = item.icon
-              const active = item.href === "/member/dashboard"
-              const content = (
-                <>
-                  <Icon size={18} />
-                  <span className="font-medium">{item.label}</span>
-                </>
-              )
-
-              if (item.href.startsWith("#")) {
-                return (
-                  <a
-                    key={item.href}
-                    href={item.href}
-                    className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-sm text-white/75 transition hover:bg-white/5 hover:text-white"
-                  >
-                    {content}
-                  </a>
-                )
-              }
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center gap-3 rounded-xl px-4 py-3.5 text-sm transition ${
-                    active ? "bg-[#ff7a1a] font-semibold text-white shadow-lg shadow-orange-950/30" : "text-white/75 hover:bg-white/5 hover:text-white"
-                  }`}
-                >
-                  {content}
-                </Link>
-              )
-            })}
-
-            <button
-              type="button"
-              title="More features coming later"
-              className="flex w-full cursor-default items-center gap-3 rounded-xl px-4 py-3.5 text-sm text-white/35"
-            >
-              <MoreHorizontal size={18} />
-              <span>More</span>
-            </button>
-          </nav>
-
-          <div className="space-y-1 border-t border-white/10 p-3">
-            <button type="button" title="Notifications coming soon" className="flex w-full cursor-default items-center gap-3 rounded-xl px-4 py-3 text-sm text-white/45">
-              <Bell size={17} /> Notifications
-            </button>
-            <button type="button" title="Messages coming soon" className="flex w-full cursor-default items-center gap-3 rounded-xl px-4 py-3 text-sm text-white/45">
-              <MessageCircle size={17} /> Messages
-            </button>
-            <button
-              onClick={handleSignOut}
-              className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm text-white/75 transition hover:bg-white/5"
-            >
-              <LogOut size={17} /> Sign out
-            </button>
-          </div>
-        </aside>
-
-        <section className="min-w-0 flex-1">
+    <div className="w-full min-w-0">
           <div className="mx-auto max-w-[1180px] px-4 py-5 pb-28 md:px-6 lg:px-8 lg:py-7 lg:pb-7">
             <header className="flex items-center justify-between gap-4 border-b border-white/10 pb-5">
               <div className="flex min-w-0 items-center gap-4">
@@ -675,23 +587,8 @@ export default function BearfitDashboardClient({
               </div>
             )}
 
-            <nav
-              aria-label="Mobile app navigation"
-              className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#07101f]/95 px-2 pt-2 backdrop-blur-xl lg:hidden"
-              style={{ paddingBottom: "max(env(safe-area-inset-bottom), 10px)" }}
-            >
-              <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
-                <MobileNavItem href="/member/dashboard" label="Home" icon={Home} active />
-                <MobileNavItem href="/member/schedule" label="Schedule" icon={CalendarDays} />
-                <MobileNavItem href="/member/rewards" label="Rewards" icon={Gift} />
-                <MobileNavItem href="/member/payments" label="Payments" icon={CreditCard} />
-                <MobileNavItem href="/member/profile" label="Profile" icon={UserIcon} />
-              </div>
-            </nav>
           </div>
-        </section>
-      </div>
-    </main>
+    </div>
   )
 }
 
@@ -701,38 +598,6 @@ function CountdownCell({ label, value }: { label: string; value: string }) {
       <p className="text-2xl font-black tabular-nums text-white sm:text-3xl lg:text-2xl">{value}</p>
       <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.14em] text-white/45">{label}</p>
     </div>
-  )
-}
-
-function MobileNavItem({
-  href,
-  label,
-  icon: Icon,
-  active = false,
-}: {
-  href: string
-  label: string
-  icon: typeof Home
-  active?: boolean
-}) {
-  const className = `flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-semibold transition ${
-    active ? "bg-[#ff7a1a] text-white" : "text-white/55 active:bg-white/10 active:text-white"
-  }`
-
-  if (href.startsWith("#")) {
-    return (
-      <a href={href} className={className}>
-        <Icon size={18} />
-        <span>{label}</span>
-      </a>
-    )
-  }
-
-  return (
-    <Link href={href} className={className}>
-      <Icon size={18} />
-      <span>{label}</span>
-    </Link>
   )
 }
 
