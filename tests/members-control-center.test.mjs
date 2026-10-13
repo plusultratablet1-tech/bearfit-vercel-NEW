@@ -134,7 +134,7 @@ test("18 quick view exposes All, Needs Attention, Renewals, Active",()=>{
  assert.match(membersUI,/matchesMemberView\(m,quickView\)/)
 })
 test("19 branch coach package status and search filtering are present",()=>{
- for(const k of ["branchFilter","coachFilter","packageFilter","statusFilter","setSearch","member.member_code"])
+ for(const k of ["branchFilter","coachFilter","packageFilter","statusFilter","setSearch","m.member_code"])
   assert.match(membersUI,new RegExp(k.replace(".","\\.")))
 })
 test("20 compact table, mobile cards and optional desktop card mode all link profiles",()=>{
