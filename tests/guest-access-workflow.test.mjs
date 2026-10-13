@@ -131,7 +131,8 @@ test("21 coach cannot accept arbitrary guest credentials as a member check-in",(
  assert.match(coach,/Admit guest · Use pass once/)
 })
 test("22 admin fee control and decisions exist behind protected page",()=>{
- assert.match(adminPage,/profile\?\.role!=="admin"/)
+ assert.match(adminPage,/role!=="admin"/)
+ assert.match(adminPage,/getStaffAccess\(\)/)
  assert.match(admin,/admin_set_guest_price/)
  assert.match(admin,/admin_decide_guest/)
  assert.match(admin,/pending_payment/)
