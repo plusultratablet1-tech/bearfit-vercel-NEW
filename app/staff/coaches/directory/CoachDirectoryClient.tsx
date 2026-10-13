@@ -1,4 +1,5 @@
 "use client"
+import {BRANCH_IDS} from "@/lib/branches"
 
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react"
@@ -14,7 +15,7 @@ type Rate = {
   id: string; coach_id: string; per_conduction_rate: number; effective_from: string
 }
 type StaffProfile = { id: string; full_name: string; branch: string }
-const branches = ["Malingap Branch", "E. Rodriguez Branch"]
+const branches = BRANCH_IDS
 
 function manilaDate() {
   const parts = new Intl.DateTimeFormat("en-US", {
