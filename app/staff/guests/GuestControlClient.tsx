@@ -17,7 +17,7 @@ export default function GuestControlClient(){
  const [prices,setPrices]=useState<Price[]>([])
  const [hostNames,setHostNames]=useState<Record<string,string>>({})
  const [filter,setFilter]=useState("all")
- const [branch,setBranch]=useState(branches[0])
+ const [branch,setBranch]=useState<string>(branches[0])
  const [purpose,setPurpose]=useState("gym_day")
  const [price,setPrice]=useState("")
  const [reference,setReference]=useState<Record<string,string>>({})
