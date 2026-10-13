@@ -253,7 +253,8 @@ export default function WelcomePage() {
                     alt={slide.title ?? "BearFitPH slide"}
                     fill
                     className="object-cover"
-                    priority={i === 1}
+                    // Off-screen onboarding slides stay lazy until navigated to.
+                    loading="lazy"
                   />
                   <div className="absolute inset-0 bg-black/50" />
                 </>
