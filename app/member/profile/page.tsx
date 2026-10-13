@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 import { MapPin } from "lucide-react"
 import MemberAppShell from "@/components/bearfit/MemberAppShell"
 import { createClient } from "@/lib/supabase/server"
-import { loadMemberAccountData } from "@/lib/member-account-server"
+import type {MemberRow,ProfileRow} from "@/lib/member-account"
 
 function formatDate(iso: string | null) {
   if (!iso) return "—"
@@ -58,7 +58,15 @@ export default async function MemberProfilePage() {
     redirect("/login")
   }
 
-  const { member, profile, loadError } = await loadMemberAccountData(user.id)
+  // Profile only needs its two records. Do not await dashboard-only package
+  // eligibility, bookings, payment history, Bearforce or coach-directory RPCs.
+  const [memberResult,profileResult] = await Promise.all([
+    supabase.from("members").select("*").eq("user_id",user.id).maybeSingle(),
+    supabase.from("profiles").select("*").eq("id",user.id).maybeSingle(),
+  ])
+  const member=(memberResult.data??null) as MemberRow|null
+  const profile=(profileResult.data??null) as ProfileRow|null
+  const loadError=memberResult.error?.message||profileResult.error?.message||null
   const displayName =
     member?.full_name ||
     member?.name ||
