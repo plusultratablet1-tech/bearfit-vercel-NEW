@@ -81,7 +81,7 @@ function paymentHref(item: StaffPackageAttentionItem) {
     params.set("stageKey", "activation")
   }
 
-  return `/payments?${params.toString()}`
+  return `/staff/payments?${params.toString()}`
 }
 
 export default function StaffPackagesPageClient({
