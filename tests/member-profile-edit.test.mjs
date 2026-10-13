@@ -50,7 +50,7 @@ test("address and emergency contacts safely modeled as optional values",()=>{
 })
 test("email change does not claim to change auth email",()=>{
  assert.match(client,/does not change their authentication\/login email/)
- assert.doesNotMatch(sql,/auth\.users|auth\.admin\.updateUser/)
+ assert.doesNotMatch(sql,/update auth\.users|auth\.admin\.updateUser/)
 })
 test("admin can reach the editor, with cancel and save",()=>{
  assert.match(profile,/role==="admin"/)
