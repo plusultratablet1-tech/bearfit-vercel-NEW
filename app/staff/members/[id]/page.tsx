@@ -275,6 +275,7 @@ export default async function StaffMemberDetailPage({
           </div>
 
           <div className="flex flex-wrap gap-2">
+            {role==="admin"&&<Link href={`/staff/members/${member.id}/edit`} className="rounded-xl border border-[#ff7a1a]/40 bg-[#ff7a1a]/10 px-4 py-3 text-sm font-bold text-[#ff9b54]">Edit Profile</Link>}
             <Link href={`/payments?memberId=${member.id}`} className="rounded-xl bg-[#25324a] px-4 py-3 text-sm font-bold">
               Record Payment
             </Link>
