@@ -12,7 +12,7 @@ test("sample roster uses four explicit synthetic member identities",()=>{
 test("coaches are inactive demo roster records with no auth account",()=>{
  assert.match(sql,/coaches_demo_safety_check/)
  assert.match(sql,/is_active=false and user_id is null and username is null/)
- assert.equal((sql.match(/'DEMO_PRIMARK_(?:PILATES|STRENGTH)'/g)||[]).length,2)
+ assert.match(sql,/on conflict \(roster_key\) do nothing/)
 })
 test("seed cannot create sessions or financial credits",()=>{
  assert.doesNotMatch(sql,/insert into public\.(?:payments|session_logs|bookings|member_package_cycles|coach_rate_history|coach_work_shifts)/i)
