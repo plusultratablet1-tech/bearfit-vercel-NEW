@@ -1,26 +1,11 @@
-import { redirect } from "next/navigation"
-import { createClient } from "@/lib/supabase/server"
+import {getStaffAccess} from "@/lib/staff-access-server"
 import StaffPackagesPageClient, {
   type StaffPackageAttentionItem,
   type StaffPackageSnapshot,
 } from "./StaffPackagesPageClient"
 
 export default async function StaffPackagesPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) redirect("/login")
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle()
-
-  const role = profile?.role ?? "member"
-  if (role !== "staff" && role !== "admin") redirect("/member/dashboard")
+  const {supabase,role}=await getStaffAccess()
 
   const [catalogResult, attentionResult] = await Promise.all([
     supabase.rpc("staff_package_catalog"),
