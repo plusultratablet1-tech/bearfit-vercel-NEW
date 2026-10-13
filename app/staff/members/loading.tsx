@@ -1,5 +1,6 @@
+// Content-only skeleton, keeping /staff/layout.tsx navigation mounted.
 export default function MembersLoading() {
- return <main role="status" aria-live="polite" className="min-h-screen bg-[#020b1c] px-4 py-6 text-white md:px-8">
+ return <div role="status" aria-live="polite" className="min-h-[60vh] px-4 py-6 text-white md:px-8">
   <div className="mx-auto max-w-7xl animate-pulse space-y-5">
    <div className="h-4 w-40 rounded bg-orange-400/20"/>
    <div className="h-9 w-80 max-w-full rounded bg-white/15"/>
@@ -12,5 +13,5 @@ export default function MembersLoading() {
    </div>
    <p className="text-sm text-white/50">Loading member directory…</p>
   </div>
- </main>
+ </div>
 }
