@@ -1,5 +1,6 @@
 "use client"
 import Link from "next/link"
+import {BRANCH_IDS} from "@/lib/branches"
 import {useCallback,useEffect,useState} from "react"
 import {RefreshCw,ShieldCheck,UsersRound,TicketCheck,Settings2,ArrowLeft} from "lucide-react"
 import StaffAppShell from "@/components/bearfit/StaffAppShell"
@@ -7,7 +8,7 @@ import {createClient} from "@/lib/supabase/client"
 const supabase=createClient()
 type Guest={id:string;guest_name:string|null;guest_phone:string|null;guest_email:string|null;branch:string;visit_day:string;purpose:string;status:string;registered_at:string|null;created_at:string;decision_note:string|null;payment_reference:string|null;amount_verified:number|null;host_member_id:string;entered_at:string|null}
 type Price={branch:string;purpose:string;amount:number}
-const branches=["Malingap Branch","E. Rodriguez Branch"]
+const branches=BRANCH_IDS
 const purposes=[["gym_day","Gym day pass"],["training","Guest training pass"]]
 const input="block w-full rounded-xl border border-white/15 bg-[#1b2434] px-3 py-2.5 text-sm text-white"
 const money=(v:number)=>"₱"+Number(v).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2})
@@ -16,7 +17,7 @@ export default function GuestControlClient(){
  const [prices,setPrices]=useState<Price[]>([])
  const [hostNames,setHostNames]=useState<Record<string,string>>({})
  const [filter,setFilter]=useState("all")
- const [branch,setBranch]=useState(branches[0])
+ const [branch,setBranch]=useState<string>(branches[0])
  const [purpose,setPurpose]=useState("gym_day")
  const [price,setPrice]=useState("")
  const [reference,setReference]=useState<Record<string,string>>({})

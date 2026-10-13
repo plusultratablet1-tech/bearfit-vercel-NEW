@@ -1,4 +1,5 @@
 "use client"
+import {BRANCH_IDS} from "@/lib/branches"
 
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react"
@@ -22,7 +23,7 @@ type Punch={id:string;work_shift_id:string|null;coach_id:string;clock_in_at:stri
 type Conduction={id:string;coach_id:string;session_date:string;status:"pending"|"approved"|"rejected"}
 type Issued={code:string;branch:string;expires_at:string}
 type Tab="today"|"weekly"|"history"
-const branches=["Malingap Branch","E. Rodriguez Branch"]
+const branches=BRANCH_IDS
 const timeZone="Asia/Manila"
 const field="w-full rounded-xl border border-white/10 bg-[#1b2434] px-3 py-2.5 text-sm text-white"
 const card="rounded-[24px] border border-white/10 bg-[#141414] p-4 md:p-5"
@@ -59,7 +60,7 @@ export default function CoachAttendanceAdminClient() {
   const [day,setDay]=useState(()=>dateInput(1))
   const [start,setStart]=useState("08:00")
   const [end,setEnd]=useState("17:00")
-  const [branch,setBranch]=useState(branches[0])
+  const [branch,setBranch]=useState<string>(branches[0])
   const [issued,setIssued]=useState<Issued|null>(null)
   const [filter,setFilter]=useState("all")
   const [coachFilter,setCoachFilter]=useState("all")

@@ -3,6 +3,7 @@ export const SESSION_TAXONOMY = [
   { label: "Weight Training", category: "fitness" },
   { label: "Boxing", category: "fitness" },
   { label: "Conditioning", category: "fitness" },
+  { label: "Strength & Conditioning", category: "fitness" },
   { label: "Cardio", category: "fitness" },
   { label: "Group Fitness", category: "fitness" },
   { label: "Pilates Group", category: "pilates_group" },

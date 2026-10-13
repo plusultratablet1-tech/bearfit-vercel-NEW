@@ -19,7 +19,11 @@ export default async function LaunchPage() {
 
   const role = profile?.role ?? "member"
 
-  if (role === "admin" || role === "staff") {
+  if (role === "admin") {
+    redirect("/staff/home")
+  }
+
+  if (role === "staff") {
     redirect("/staff/schedule")
   }
 

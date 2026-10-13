@@ -6,6 +6,7 @@ import type { ReactNode } from "react"
 import {
   Bell,
   CalendarDays,
+  LayoutDashboard,
   ClipboardList,
   CreditCard,
   Gift,
@@ -22,6 +23,7 @@ import { createClient } from "@/lib/supabase/client"
 const supabase = createClient()
 
 const navItems = [
+  { label: "Home", icon: LayoutDashboard, href: "/staff/home" },
   { label: "Schedule", icon: CalendarDays, href: "/staff/schedule" },
   { label: "Coaches", icon: ClipboardList, href: "/staff/coaches" },
   { label: "Check-In", icon: ScanLine, href: "/staff/checkin" },
@@ -49,6 +51,7 @@ export default function StaffPersistentShell({ role, children }: Props) {
   }
 
   const roleLabel = role === "admin" ? "Admin" : "Staff"
+  const visibleNavItems=role==="admin"?navItems:navItems.filter(item=>item.href!=="/staff/home")
 
   return (
     <main className="min-h-screen bg-[#020b1c] text-white">
@@ -71,7 +74,7 @@ export default function StaffPersistentShell({ role, children }: Props) {
           </div>
 
           <nav className="flex-1 space-y-2 border-t border-white/10 px-3 py-4">
-            {navItems.map((item) => {
+            {visibleNavItems.map((item) => {
               const Icon = item.icon
               const active = activePath === item.href || activePath.startsWith(item.href + "/")
 
@@ -79,7 +82,7 @@ export default function StaffPersistentShell({ role, children }: Props) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  prefetch={item.href==="/staff/schedule" || item.href==="/staff/members" ? true : undefined}
+                  prefetch={item.href==="/staff/home" || item.href==="/staff/schedule" || item.href==="/staff/members" ? true : undefined}
                   onPointerEnter={()=>router.prefetch(item.href)}
                   onFocus={()=>router.prefetch(item.href)}
                   onTouchStart={()=>router.prefetch(item.href)}
@@ -145,7 +148,7 @@ export default function StaffPersistentShell({ role, children }: Props) {
           style={{ paddingBottom: "max(env(safe-area-inset-bottom), 10px)" }}
         >
           <div className="mx-auto flex max-w-lg gap-1 overflow-x-auto">
-            {navItems.map((item) => {
+            {visibleNavItems.map((item) => {
               const Icon = item.icon
               const active = activePath === item.href || activePath.startsWith(item.href + "/")
 
@@ -153,7 +156,7 @@ export default function StaffPersistentShell({ role, children }: Props) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  prefetch={item.href==="/staff/schedule" || item.href==="/staff/members" ? true : undefined}
+                  prefetch={item.href==="/staff/home" || item.href==="/staff/schedule" || item.href==="/staff/members" ? true : undefined}
                   onPointerEnter={()=>router.prefetch(item.href)}
                   onFocus={()=>router.prefetch(item.href)}
                   onTouchStart={()=>router.prefetch(item.href)}

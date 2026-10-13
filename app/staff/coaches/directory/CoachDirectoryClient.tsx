@@ -1,4 +1,5 @@
 "use client"
+import {BRANCH_IDS} from "@/lib/branches"
 
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react"
@@ -14,7 +15,7 @@ type Rate = {
   id: string; coach_id: string; per_conduction_rate: number; effective_from: string
 }
 type StaffProfile = { id: string; full_name: string; branch: string }
-const branches = ["Malingap Branch", "E. Rodriguez Branch"]
+const branches = BRANCH_IDS
 
 function manilaDate() {
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -36,7 +37,7 @@ export default function CoachDirectoryClient() {
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [newName, setNewName] = useState("")
-  const [newBranch, setNewBranch] = useState(branches[0])
+  const [newBranch, setNewBranch] = useState<string>(branches[0])
   const [rateDraft, setRateDraft] = useState<Record<string, string>>({})
   const [dateDraft, setDateDraft] = useState<Record<string, string>>({})
   const [branchDraft, setBranchDraft] = useState<Record<string, string>>({})

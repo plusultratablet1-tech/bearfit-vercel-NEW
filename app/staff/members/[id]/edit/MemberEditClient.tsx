@@ -1,5 +1,6 @@
 "use client"
 import Link from "next/link"
+import {BRANCH_IDS} from "@/lib/branches"
 import {useState,type FormEvent} from "react"
 import {useRouter} from "next/navigation"
 import {ArrowLeft,Save,History,ShieldCheck,AlertTriangle} from "lucide-react"
@@ -8,7 +9,7 @@ import {createClient} from "@/lib/supabase/client"
 
 type Editable={id:string;member_code:string|null;full_name:string;email:string|null;phone:string|null;address:string|null;emergency_contact_name:string|null;emergency_contact_phone:string|null;branch:string;coach_name:string|null;membership_status:string;updated_at:string}
 type EditEvent={id:string;changed_at:string;admin_user_id:string;previous_values:Record<string,unknown>;new_values:Record<string,unknown>;reason:string}
-const branches=["Malingap Branch","E. Rodriguez Branch"]
+const branches=BRANCH_IDS
 const statuses=["active","inactive","paused","renewal_due","unknown"]
 const input="mt-1.5 block w-full rounded-xl border border-white/15 bg-[#1b2434] px-3 py-3 text-sm text-white outline-none focus:border-[#ff7a1a]/60"
 const supabase=createClient()
