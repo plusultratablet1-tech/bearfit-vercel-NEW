@@ -60,7 +60,7 @@ export default function CoachAttendanceAdminClient() {
   const [day,setDay]=useState(()=>dateInput(1))
   const [start,setStart]=useState("08:00")
   const [end,setEnd]=useState("17:00")
-  const [branch,setBranch]=useState(branches[0])
+  const [branch,setBranch]=useState<string>(branches[0])
   const [issued,setIssued]=useState<Issued|null>(null)
   const [filter,setFilter]=useState("all")
   const [coachFilter,setCoachFilter]=useState("all")
