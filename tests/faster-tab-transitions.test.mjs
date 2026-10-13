@@ -75,3 +75,13 @@ test("11 no membership, payment, booking, guest or coach payroll writes introduc
   assert.doesNotMatch(code,/supabase\.from\(["'](?:members|payments|bookings|coach_conductions|guest_invites)["']\)\.(insert|update|delete)/)
  }
 })
+
+
+test("12 Member Profile fetches only its own two records",()=>{
+ const profile=read("app/member/profile/page.tsx")
+ assert.match(profile,/Promise\.all\(\[/)
+ assert.match(profile,/supabase\.from\("members"\)/)
+ assert.match(profile,/supabase\.from\("profiles"\)/)
+ assert.doesNotMatch(profile,/loadMemberAccountData\(|member_package_eligibility|member_bearforce_summary|member_coach_directory/)
+ assert.match(profile,/auth\.getUser\(\)/)
+})
