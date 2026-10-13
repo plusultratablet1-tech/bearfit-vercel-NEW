@@ -9,7 +9,7 @@ import { createClient } from "@/lib/supabase/client"
 
 const supabase = createClient()
 type Coach = {
-  id: string; display_name: string; branch: string; username: string | null; user_id: string | null; is_active: boolean
+  id: string; display_name: string; branch: string; username: string | null; user_id: string | null; is_active: boolean; is_demo: boolean
 }
 type Rate = {
   id: string; coach_id: string; per_conduction_rate: number; effective_from: string
@@ -48,7 +48,7 @@ export default function CoachDirectoryClient() {
     setLoading(true)
     setError(null)
     const [c, r, p] = await Promise.all([
-      supabase.from("coaches").select("id,display_name,branch,username,user_id,is_active").order("display_name"),
+      supabase.from("coaches").select("id,display_name,branch,username,user_id,is_active,is_demo").order("display_name"),
       supabase.from("coach_rate_history").select("id,coach_id,per_conduction_rate,effective_from")
         .order("effective_from", { ascending: false }),
       supabase.from("profiles").select("id,full_name,branch").in("role", ["staff", "coach"]).order("full_name"),
@@ -86,6 +86,7 @@ export default function CoachDirectoryClient() {
   }
 
   async function saveRate(coach: Coach) {
+    if (coach.is_demo) return setError("Demo coaches cannot receive payroll rates.")
     const value = (rateDraft[coach.id] || "").trim()
     const date = dateDraft[coach.id] || today
     const num = Number(value)
@@ -117,6 +118,7 @@ export default function CoachDirectoryClient() {
   }
 
   async function setActive(coach: Coach) {
+    if (coach.is_demo) return setError("Demo coaches cannot be activated. Create a verified real coach instead.")
     if (!window.confirm((coach.is_active ? "Mark " + coach.display_name + " inactive?" : "Reactivate " + coach.display_name + "?") + " This will not rewrite past session records.")) return
     setBusy(coach.id + ":active"); setError(null); setNotice(null)
     const { error: err } = await supabase.from("coaches").update({ is_active: !coach.is_active }).eq("id", coach.id)
@@ -127,6 +129,7 @@ export default function CoachDirectoryClient() {
   }
 
   async function linkAccount(coach: Coach) {
+    if (coach.is_demo) return setError("Demo coaches cannot be linked to real accounts.")
     const selected = userDraft[coach.id] ?? coach.user_id ?? ""
     const account = staff.find((person) => person.id === selected)
     if (!window.confirm(selected
@@ -143,6 +146,7 @@ export default function CoachDirectoryClient() {
   }
 
   async function provisionLogin(coach: Coach, action: "create" | "reset") {
+    if (coach.is_demo) return setError("Demo coaches cannot be given login credentials.")
     if (!coach.username) return setError("Coach username must be assigned first.")
     const label = action === "create" ? "Create" : "Reset password for"
     if (!window.confirm(label + " " + coach.username + " (" + coach.display_name + ")? A new secure temporary password will be shown only once.")) return
@@ -235,7 +239,7 @@ export default function CoachDirectoryClient() {
             return <article key={coach.id} className="rounded-[24px] border border-white/10 bg-[#141414] p-4 md:p-6">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h3 className="text-xl font-black">{coach.display_name}</h3>
+                  <h3 className="text-xl font-black">{coach.display_name} {coach.is_demo && <span className="ml-2 rounded-full bg-blue-500/15 px-2 py-1 text-xs text-blue-300">Demo coach</span>}</h3>
                   <p className="mt-1 text-sm text-white/45">{coach.branch} · Username: {coach.username || "Not assigned"} · {coach.user_id ? "Login active" : "Login not provisioned"}</p>
                 </div>
                 <button type="button" disabled={busy !== null} onClick={() => void setActive(coach)}
