@@ -8,7 +8,7 @@ export default async function AdminHomePage(){
  if(role!=="admin")redirect("/staff/schedule")
  const {day,startUtc,endUtc}=manilaWindow(new Date())
  const [members,bookings,pendingBookings,shifts,guests,pendingPayments,paidToday,checkins]=await Promise.all([
-  supabase.from("members").select("id,branch,membership_status,status,sessions_left,payment_status").order("id").limit(2000),
+  supabase.from("members").select("id,branch,membership_status,status,sessions_left,payment_status").eq("is_demo",false).order("id").limit(2000),
   supabase.from("bookings").select("id,branch,status,start_at,requested_start_at").gte("start_at",startUtc).lt("start_at",endUtc).limit(1000),
   supabase.from("bookings").select("id,branch,status,start_at,requested_start_at").eq("status","pending").limit(1000),
   supabase.from("coach_work_shifts").select("id,branch,response,starts_at").gte("starts_at",startUtc).lt("starts_at",endUtc).limit(1000),
