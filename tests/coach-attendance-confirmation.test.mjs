@@ -75,7 +75,8 @@ test("13 work shifts cannot overlap on same coach",()=>{
 test("14 admin is the only shift planner and coaches cannot self-schedule",()=>{
  assert.match(sql,/admin_plan_coach_shift/)
  assert.match(sql,/p\.role='admin'/)
- assert.match(adminPage,/profile\?\.role!=="admin"/)
+ assert.match(adminPage,/role!=="admin"/)
+ assert.match(adminPage,/getStaffAccess\(\)/)
 })
 test("15 admin dashboard monitors response and verified punches",()=>{
  assert.match(admin,/coach_work_shifts/)
