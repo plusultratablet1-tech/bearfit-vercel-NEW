@@ -37,7 +37,7 @@ export default function CoachDirectoryClient() {
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [newName, setNewName] = useState("")
-  const [newBranch, setNewBranch] = useState(branches[0])
+  const [newBranch, setNewBranch] = useState<string>(branches[0])
   const [rateDraft, setRateDraft] = useState<Record<string, string>>({})
   const [dateDraft, setDateDraft] = useState<Record<string, string>>({})
   const [branchDraft, setBranchDraft] = useState<Record<string, string>>({})
