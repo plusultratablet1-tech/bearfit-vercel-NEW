@@ -12,12 +12,12 @@ insert into public.coaches(display_name,branch,is_active,is_demo,user_id,usernam
  on conflict (roster_key) do nothing;
 
 insert into public.members(
- membership_id,name,full_name,email,phone,branch,package_name,package_type,
+ member_code,membership_id,name,full_name,email,phone,branch,package_name,package_type,
  status,membership_status,total_sessions,sessions_used,sessions_left,payment_status,
  total_paid,is_demo,coach_name,address,emergency_contact_name,emergency_contact_phone
 ) values
- ('DEMO-PRIM-001','[DEMO] Sofia Cruz','[DEMO] Sofia Cruz','sofia.primark@example.invalid',null,'Primark Cainta','Pilates Group','Pilates','inactive','inactive',0,0,0,'not_recorded',0,true,'[DEMO] Coach Mira Santos','Sample profile — Primark Cainta',null,null),
- ('DEMO-PRIM-002','[DEMO] Liam Garcia','[DEMO] Liam Garcia','liam.primark@example.invalid',null,'Primark Cainta','Strength & Conditioning','Fitness','inactive','inactive',0,0,0,'not_recorded',0,true,'[DEMO] Coach Andre Reyes','Sample profile — Primark Cainta',null,null),
- ('DEMO-PRIM-003','[DEMO] Ava Dela Cruz','[DEMO] Ava Dela Cruz','ava.primark@example.invalid',null,'Primark Cainta','Pilates 1-on-1','Pilates','inactive','inactive',0,0,0,'not_recorded',0,true,'[DEMO] Coach Mira Santos','Sample profile — Primark Cainta',null,null),
- ('DEMO-PRIM-004','[DEMO] Noah Mendoza','[DEMO] Noah Mendoza','noah.primark@example.invalid',null,'Primark Cainta','Strength & Conditioning','Fitness','inactive','inactive',0,0,0,'not_recorded',0,true,'[DEMO] Coach Andre Reyes','Sample profile — Primark Cainta',null,null)
+ ('DPR-001','DEMO-PRIM-001','[DEMO] Sofia Cruz','[DEMO] Sofia Cruz','sofia.primark@example.invalid',null,'Primark Cainta','Pilates Group','Pilates','inactive','inactive',0,0,0,'not_recorded',0,true,'[DEMO] Coach Mira Santos','Sample profile — Primark Cainta',null,null),
+ ('DPR-002','DEMO-PRIM-002','[DEMO] Liam Garcia','[DEMO] Liam Garcia','liam.primark@example.invalid',null,'Primark Cainta','Strength & Conditioning','Fitness','inactive','inactive',0,0,0,'not_recorded',0,true,'[DEMO] Coach Andre Reyes','Sample profile — Primark Cainta',null,null),
+ ('DPR-003','DEMO-PRIM-003','[DEMO] Ava Dela Cruz','[DEMO] Ava Dela Cruz','ava.primark@example.invalid',null,'Primark Cainta','Pilates 1-on-1','Pilates','inactive','inactive',0,0,0,'not_recorded',0,true,'[DEMO] Coach Mira Santos','Sample profile — Primark Cainta',null,null),
+ ('DPR-004','DEMO-PRIM-004','[DEMO] Noah Mendoza','[DEMO] Noah Mendoza','noah.primark@example.invalid',null,'Primark Cainta','Strength & Conditioning','Fitness','inactive','inactive',0,0,0,'not_recorded',0,true,'[DEMO] Coach Andre Reyes','Sample profile — Primark Cainta',null,null)
 on conflict (membership_id) do nothing;
