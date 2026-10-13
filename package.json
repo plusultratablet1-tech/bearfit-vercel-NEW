@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node --test tests/coach-payroll-failsafes.test.mjs tests/coach-simple-logins.test.mjs tests/coach-attendance-confirmation.test.mjs tests/coach-attendance-demo.test.mjs tests/coach-attendance-board.test.mjs tests/guest-access-workflow.test.mjs tests/monthly-free-guest.test.mjs && next build",
+    "build": "node --test tests/coach-payroll-failsafes.test.mjs tests/coach-simple-logins.test.mjs tests/coach-attendance-confirmation.test.mjs tests/coach-attendance-demo.test.mjs tests/coach-attendance-board.test.mjs tests/guest-access-workflow.test.mjs tests/monthly-free-guest.test.mjs tests/members-control-center.test.mjs && next build",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
