@@ -118,8 +118,8 @@ test("15 stats separate renewal pipeline from imported pending payments",()=>{
  assert.equal(s.paymentExceptions,1)
 })
 test("16 directory remains read-only and preserves original authenticated RLS-scoped fetch",()=>{
- assert.match(route,/profile\?\.role/)
- assert.match(route,/role !== "staff" && role !== "admin"/)
+ assert.match(route,/getStaffAccess\(\)/)
+ assert.match(fs.readFileSync("lib/staff-access-server.ts","utf8"),/role!=="admin" && role!=="staff"/)
  assert.match(route,/\.from\("members"\)/)
  assert.match(route,/\.select\(/)
  assert.doesNotMatch(membersUI,/\.from\(["']members["']\)\.update|\.rpc\("admin_update_member/)
