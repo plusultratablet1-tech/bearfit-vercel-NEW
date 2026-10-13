@@ -146,6 +146,7 @@ export default function CoachDirectoryClient() {
   }
 
   async function provisionLogin(coach: Coach, action: "create" | "reset") {
+    if (coach.is_demo) return setError("Demo coaches cannot be given login credentials.")
     if (!coach.username) return setError("Coach username must be assigned first.")
     const label = action === "create" ? "Create" : "Reset password for"
     if (!window.confirm(label + " " + coach.username + " (" + coach.display_name + ")? A new secure temporary password will be shown only once.")) return
