@@ -54,7 +54,7 @@ test("10 member profile has immediate route loading state",()=>{
 test("11 welcome media pauses when not visible",()=>{
  assert.match(welcome,/function WelcomeVideo/)
  assert.match(welcome,/else video\.pause\(\)/)
- assert.match(welcome,/<WelcomeVideo src=\{slide\.video\} active=\{active\}/>)
+ assert.match(welcome,/<WelcomeVideo src=\{slide\.video\} active=\{active\}\s*\/>/)
 })
 test("12 hidden onboarding images are not eager priority preload",()=>{
  assert.doesNotMatch(welcome,/priority=\{i === 1\}/)
