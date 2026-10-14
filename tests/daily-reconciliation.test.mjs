@@ -68,7 +68,8 @@ test("06 inactive demo coaches are excluded from shifts and conductions",()=>{
 test("07 recorded PAID is not mistakenly treated as bank reconciliation",()=>{
  assert.match(client,/Recorded transactions only; not bank or cash verified/)
  assert.match(client,/does not verify bank settlements/)
- assert.match(client,/not a signed daily closing report/)
+ assert.ok(client.includes("a signed daily closing report"))
+ assert.ok(client.includes("<strong>not</strong>"))
 })
 test("08 imported legacy pending member labels are never counted as transactions",()=>{
  const d=base()
