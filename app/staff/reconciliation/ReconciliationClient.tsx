@@ -10,7 +10,7 @@ const php=(n:number)=>"₱"+n.toLocaleString("en-PH",{minimumFractionDigits:2,ma
 type MetricKey=keyof ReconciliationStats
 const metrics:{label:string;key:MetricKey;needs:string[];icon:typeof Wallet;description:string}[]=[
  {label:"Payments marked PAID",key:"recordedPaid",icon:Wallet,needs:["members","paid"],description:"Recorded transactions only; not bank or cash verified"},
- {label:"Member session logs",key:"memberVisits",icon:UsersRound,needs:["members","attendance"],description:"System check-ins; not proof of physical entry"},
+ {label:"Member session logs",key:"memberVisits",icon:UsersRound,needs:["members","attendance","bookings","linkedBookings"],description:"Booked visits use the booking's recorded branch, not a member's current branch"},
  {label:"Approved coach conductions",key:"conductionsApproved",icon:CheckCheck,needs:["members","coaches","conductions"],description:"Approved sessions; not confirmed payroll disbursement"},
  {label:"Guest entries",key:"guestEntries",icon:TicketCheck,needs:["members","guests"],description:"Passes with recorded entry timestamps"},
 ]
@@ -21,7 +21,9 @@ const exceptions:{title:string;subtitle:string;key:MetricKey;needs:string[];href
  {title:"Coach clock-ins without clock-out",subtitle:"Open time records started on this day",key:"openClockins",needs:["coaches","clockins"],href:"/staff/coaches/attendance"},
  {title:"Coach conductions pending review",subtitle:"Not yet approved, rejected, void or cancelled",key:"conductionsForReview",needs:["coaches","members","conductions"],href:"/staff/coaches/attendance"},
  {title:"Guest invitations awaiting a decision",subtitle:"Pending payment or approval for this visit date",key:"guestPending",needs:["members","guests"],href:"/staff/guests"},
- {title:"Scheduled bookings without linked session logs",subtitle:"Ended confirmed bookings to investigate; not proven no-shows",key:"possibleMissingCheckins",needs:["members","attendance","bookings"],href:"/staff/schedule"},
+ {title:"Scheduled bookings without linked session logs",subtitle:"Ended confirmed bookings to investigate; not proven no-shows",key:"possibleMissingCheckins",needs:["members","attendance","bookings","linkedBookings"],href:"/staff/schedule"},
+ {title:"Booked check-ins without a matching member-owned booking",subtitle:"No verified booking link; excluded from branch visit totals",key:"unattributedBookedVisits",needs:["members","attendance","bookings","linkedBookings"],href:"/staff/schedule"},
+ {title:"Booking branch differs from current member branch",subtitle:"Possible branch transfer; booking history takes precedence",key:"bookingBranchMismatches",needs:["members","attendance","bookings","linkedBookings"],href:"/staff/members"},
  {title:"Unassigned or demo-linked payment records",subtitle:"Excluded from branch financial totals; investigate the member link",key:"unassignedPayments",needs:["members","paid","flagged","missingPaidDate"],href:"/staff/payments"},
 ]
 function rowsToCsv(rows:string[][]){
@@ -56,8 +58,11 @@ export default function ReconciliationClient({data}:{data:ReconciliationData}){
    ["Metric","Recorded value"],...metrics.map(m=>[m.label,m.key==="recordedPaid"?php(Number(stats[m.key])):String(stats[m.key])]),
    ["Recorded guest verification amounts (separate from payments)",php(stats.guestRecordedAmount)],
    ["Planned shifts",String(stats.plannedShifts)],["Actual coach clock-ins",String(stats.coachClockins)],
-   ["Manual/unlinked member check-ins",String(stats.memberWalkins)],[],
+   ["Manual/unlinked member check-ins",String(stats.memberWalkins)],
+   ["Booked check-ins with different member branch",String(stats.bookingBranchMismatches)],
+   ["Booked check-ins with unresolved booking",String(stats.unattributedBookedVisits)],[],
    ["Review queue","Count"],...exceptions.map(e=>[e.title,String(stats[e.key])]),[],
+   ["Important","Payments use today's member branch and lack historical branch snapshots; past transfers may shift historical reports."],
    ["Important","These are database records; cash/bank receipts and physical presence are not independently verified."],
    ["Important","No close, approval, payment, payroll or session-balance action is performed."]
   ]
@@ -114,14 +119,14 @@ export default function ReconciliationClient({data}:{data:ReconciliationData}){
     <div className="rounded-3xl border border-white/10 bg-[#141414] p-5">
      <h2 className="flex items-center gap-2 text-base font-black"><CreditCard size={19} className="text-orange-300"/>Financial review</h2>
      <p className="mt-3 text-2xl font-black">{amountOkay?php(stats.recordedPaid):"—"}</p>
-     <p className="mt-2 text-xs leading-5 text-white/50">Total marked <strong>PAID</strong> on {dateLabel}. This does not verify bank settlements, cash on hand, or receipts. Imported member payment labels are excluded.</p>
+     <p className="mt-2 text-xs leading-5 text-white/50">Total marked <strong>PAID</strong> on {dateLabel}. This does not verify bank settlements, cash on hand, or receipts. Imported member payment labels are excluded. Payments use the member's present branch; historical payment branch snapshots are not available.</p>
      <p className="mt-3 text-xs text-white/60">{available(["members","paid"])?stats.paidCount:"—"} payment transactions · {available(["members","flagged"])?stats.flaggedCount:"—"} flagged on this date</p>
      <Link href="/staff/payments" className="mt-4 inline-flex gap-2 text-xs font-bold text-orange-300">Open Payments <ArrowRight size={14}/></Link>
     </div>
     <div className="rounded-3xl border border-white/10 bg-[#141414] p-5">
      <h2 className="flex items-center gap-2 text-base font-black"><ClipboardCheck size={19} className="text-orange-300"/>Attendance & coaching</h2>
      <div className="mt-3 space-y-2 text-xs text-white/70">
-      <p className="flex justify-between gap-3"><span>Manual/unlinked check-ins</span><strong>{available(["members","attendance"])?stats.memberWalkins:"—"}</strong></p>
+      <p className="flex justify-between gap-3"><span>Manual/unlinked check-ins</span><strong>{available(["members","attendance","bookings","linkedBookings"])?stats.memberWalkins:"—"}</strong></p>
       <p className="flex justify-between gap-3"><span>Scheduled bookings</span><strong>{available(["members","bookings"])?stats.bookingsScheduled:"—"}</strong></p>
       <p className="flex justify-between gap-3"><span>Planned coach shifts</span><strong>{available(["coaches","plans"])?stats.plannedShifts:"—"}</strong></p>
       <p className="flex justify-between gap-3"><span>Coach clock-ins</span><strong>{available(["coaches","clockins"])?stats.coachClockins:"—"}</strong></p>
@@ -131,7 +136,7 @@ export default function ReconciliationClient({data}:{data:ReconciliationData}){
     </div>
     <div className="rounded-3xl border border-white/10 bg-[#101725] p-5">
      <h2 className="flex items-center gap-2 text-sm font-black"><ShieldCheck size={17} className="text-orange-300"/>Scope and safeguards</h2>
-     <p className="mt-2 text-xs leading-5 text-white/60">All demo members and coaches are excluded. Guest verification amounts are shown separately and never added to payment totals. A check-in is not proof of physical presence; a coach clock-in is not a payable conduction.</p>
+     <p className="mt-2 text-xs leading-5 text-white/60">All demo members and coaches are excluded. Guest verification amounts are shown separately and never added to payment totals. Booked visits use the booking branch and unresolved links are excluded. A check-in is not proof of physical presence; a coach clock-in is not a payable conduction.</p>
      <p className="mt-2 text-xs leading-5 text-white/50">Recorded guest verification amounts: <strong className="text-white">{available(["members","guests"])?php(stats.guestRecordedAmount):"—"}</strong></p>
     </div>
    </div>
@@ -143,7 +148,7 @@ export default function ReconciliationClient({data}:{data:ReconciliationData}){
      <h3 className="text-sm font-black">{b.name}</h3>
      <p className="mt-3 text-2xl font-black">{amountOkay?php(s.recordedPaid):"—"}</p>
      <p className="mt-1 text-xs text-white/50">Recorded as PAID</p>
-     <p className="mt-3 text-xs text-white/65">Session logs: {available(["members","attendance"])?s.memberVisits:"—"} · Coach approvals: {available(["members","coaches","conductions"])?s.conductionsApproved:"—"} · Guest entries: {available(["members","guests"])?s.guestEntries:"—"}</p>
+     <p className="mt-3 text-xs text-white/65">Session logs: {available(["members","attendance","bookings","linkedBookings"])?s.memberVisits:"—"} · Coach approvals: {available(["members","coaches","conductions"])?s.conductionsApproved:"—"} · Guest entries: {available(["members","guests"])?s.guestEntries:"—"}</p>
     </button>)}
    </div>
   </section>
