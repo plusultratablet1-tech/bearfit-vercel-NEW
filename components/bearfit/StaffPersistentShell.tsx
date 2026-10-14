@@ -8,6 +8,7 @@ import {
   CalendarDays,
   LayoutDashboard,
   ClipboardList,
+  ClipboardCheck,
   CreditCard,
   Gift,
   LogOut,
@@ -24,6 +25,7 @@ const supabase = createClient()
 
 const navItems = [
   { label: "Home", icon: LayoutDashboard, href: "/staff/home" },
+  { label: "Reconcile", icon: ClipboardCheck, href: "/staff/reconciliation" },
   { label: "Schedule", icon: CalendarDays, href: "/staff/schedule" },
   { label: "Coaches", icon: ClipboardList, href: "/staff/coaches" },
   { label: "Check-In", icon: ScanLine, href: "/staff/checkin" },
@@ -51,7 +53,7 @@ export default function StaffPersistentShell({ role, children }: Props) {
   }
 
   const roleLabel = role === "admin" ? "Admin" : "Staff"
-  const visibleNavItems=role==="admin"?navItems:navItems.filter(item=>item.href!=="/staff/home")
+  const visibleNavItems=role==="admin"?navItems:navItems.filter(item=>item.href!=="/staff/home"&&item.href!=="/staff/reconciliation")
 
   return (
     <main className="min-h-screen bg-[#020b1c] text-white">
