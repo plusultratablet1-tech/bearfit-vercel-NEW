@@ -96,7 +96,7 @@ test("11 member walk-in session does not automatically become exception or dupli
  d.attendance=[{id:"1",member_id:"1",booking_id:null,trained_at:"",session_label:"fitness"}]
  assert.equal(m.reconciliationStats(d,a).memberVisits,1)
  assert.equal(m.reconciliationStats(d,a).memberWalkins,1)
- assert.doesNotMatch(server,/\\.insert\\(|\\.update\\(|\\.delete\\(/)
+ assert.doesNotMatch(server,/\.insert\(|\.update\(|\.delete\(/)
 })
 test("12 historical confirmed booking after end and without linked log is a potential investigation",()=>{
  const d=base()
@@ -140,34 +140,34 @@ test("17 failed or truncated data is never reported as a verified zero",()=>{
  assert.equal(m.dataComplete(d,"members","paid"),false)
  assert.match(client,/data.failed.join/)
  assert.match(client,/Affected values are shown as unavailable/)
- assert.match(client,/disabled=\\{!complete\\}/)
+ assert.match(client,/disabled=\{!complete\}/)
 })
 test("18 protected Admin-only page uses signed-in RLS client",()=>{
- assert.match(server,/await getStaffAccess\\(\\)/)
- assert.match(server,/role!=="admin"\\)redirect\\("\\/staff\\/schedule"\\)/)
- assert.match(server,/\\.select\\(/)
- assert.doesNotMatch(server,/service_role|createAdminClient|\\.rpc\\(|\\.insert\\(|\\.update\\(|\\.delete\\(/)
+ assert.match(server,/await getStaffAccess\(\)/)
+ assert.match(server,/role!=="admin"\)redirect\("\/staff\/schedule"\)/)
+ assert.match(server,/\.select\(/)
+ assert.doesNotMatch(server,/service_role|createAdminClient|\.rpc\(|\.insert\(|\.update\(|\.delete\(/)
 })
 test("19 day scoping is applied to each event source, not all-time records",()=>{
  for(const key of ["paid_at","created_at","trained_at","start_at","starts_at","clock_in_at"]){
-  assert.match(server,new RegExp('\\\\.gte\\\\("'+key+'",from\\\\)'))
+  assert.ok(server.includes('.gte("'+key+'",from)'),"Date filter missing for "+key)
  }
- assert.match(server,/\\.eq\\("session_date",date\\)/)
- assert.match(server,/\\.eq\\("visit_day",date\\)/)
+ assert.match(server,/\.eq\("session_date",date\)/)
+ assert.match(server,/\.eq\("visit_day",date\)/)
 })
 test("20 official financial and payroll state remains untouched",()=>{
  for(const source of [server,client,nav,home]){
-  assert.doesNotMatch(source,/\\.from\\("(?:coach_payroll_cutoffs|member_package_cycles)"\\)\\.update/)
+  assert.doesNotMatch(source,/\.from\("(?:coach_payroll_cutoffs|member_package_cycles)"\)\.update/)
  }
  assert.match(client,/no.*signed daily closing report/)
 })
 test("21 Admin navigation links the new view, Staff navigation excludes it",()=>{
- assert.match(nav,/href: "\\/staff\\/reconciliation"/)
- assert.match(nav,/item.href!=="\\/staff\\/reconciliation"/)
- assert.match(home,/href="\\/staff\\/reconciliation"/)
+ assert.match(nav,/href: "\/staff\/reconciliation"/)
+ assert.match(nav,/item.href!=="\/staff\/reconciliation"/)
+ assert.match(home,/href="\/staff\/reconciliation"/)
 })
 test("22 CSV download is blocked if any data source failed",()=>{
- assert.match(client,/if\\(!complete\\)return/)
+ assert.match(client,/if\(!complete\)return/)
  assert.match(client,/Export CSV/)
  assert.match(client,/not.*bank/)
 })
