@@ -38,6 +38,10 @@ export default function AdminHomeClient({data}:{data:HomeData}){
    <Link href="/staff/home" className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-3 py-2.5 text-xs font-semibold text-white/70 hover:bg-white/5"><RefreshCw size={15}/>Refresh data</Link>
   </header>
   {data.failed.length>0&&<div role="alert" className="rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">Some metrics could not be fully loaded ({data.failed.join(", ")}). Affected figures are shown as unavailable; retry before making decisions.</div>}
+  <Link href="/staff/reconciliation" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-orange-400/25 bg-orange-400/10 px-4 py-4 hover:bg-orange-400/15">
+    <span><strong className="block text-sm text-orange-200">Phase 2 · Daily Reconciliation</strong><span className="mt-1 block text-xs text-white/60">Review financial records, member check-ins, coach activity and guest access by branch.</span></span>
+    <span className="flex items-center gap-2 text-xs font-bold text-orange-200">Open daily review <ArrowRight size={15}/></span>
+   </Link>
   <section aria-label="Select branch" className="flex flex-wrap gap-2">
    <button type="button" aria-pressed={branch===ALL_BRANCHES} onClick={()=>setBranch(ALL_BRANCHES)} className={(branch===ALL_BRANCHES?"border-orange-400 bg-[#ff7a1a] text-white":"border-white/10 bg-[#141414] text-white/65")+" rounded-xl border px-4 py-3 text-xs font-bold"}>All 3 branches</button>
    {BEARFIT_BRANCHES.map(b=><button type="button" key={b.id} aria-pressed={branch===b.id} onClick={()=>setBranch(b.id)} className={(branch===b.id?"border-orange-400 bg-[#ff7a1a] text-white":"border-white/10 bg-[#141414] text-white/65")+" rounded-xl border px-4 py-3 text-xs font-bold"}>{b.name}</button>)}
