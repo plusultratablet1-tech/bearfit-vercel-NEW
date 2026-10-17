@@ -17,6 +17,11 @@ function reply(data: Record<string, unknown>, status = 200) {
 }
 
 export async function POST(request: Request) {
+  // Vercel preview deployments may point to the production Supabase project.
+  // Do not allow a preview visit to provision a production authentication user.
+  if (process.env.VERCEL_ENV === "preview") {
+    return reply({ error: "Activate demo credentials only after approved production release" }, 403)
+  }
   // This single-purpose action never accepts caller-supplied IDs, roles,
   // emails, passwords, branches, or package/session changes.
   if (request.headers.get("sec-fetch-site") === "cross-site") {
@@ -135,9 +140,10 @@ export async function POST(request: Request) {
 
   // The trigger-created empty member is safe to remove only after the verified
   // profile has been relinked. This does not delete the original demo record.
-  const { error: cleanupError } = await admin.from("members")
+  const { data: cleanup, error: cleanupError } = await admin.from("members")
     .delete().eq("id", autoMember.id).eq("is_demo", true).is("user_id", null)
-  if (cleanupError) {
+    .select("id").maybeSingle()
+  if (cleanupError || !cleanup) {
     // Linked login is valid; do not discard the generated temporary password.
     return reply({
       email: DEMO_EMAIL,
