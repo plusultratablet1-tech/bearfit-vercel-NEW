@@ -29,7 +29,8 @@ function normalizeCode(raw:string) {
   if(direct) return direct[0].toUpperCase()
   try { const u=new URL(raw);return u.searchParams.get("member")?.match(/\bM\d{3,}\b/i)?.[0]?.toUpperCase()??"" } catch { return "" }
 }
-export default function CoachHomeClient({coach}:{coach:Coach|null}) {
+type CoachTab = "home" | "schedule" | "activity" | "payments" | "profile"
+export default function CoachHomeClient({coach,tab="home"}:{coach:Coach|null;tab?:CoachTab}) {
   const [data,setData]=useState<Dashboard|null>(null)
   const [loading,setLoading]=useState(true)
   const [busy,setBusy]=useState<string|null>(null)
@@ -148,8 +149,8 @@ export default function CoachHomeClient({coach}:{coach:Coach|null}) {
   const conductions=data?.conductions||[]
   const card="rounded-[24px] border border-white/10 bg-[#141414] p-5"
   const btn="rounded-xl bg-[#ff7a1a] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-40"
-  return <main className="min-h-screen bg-[#020b1c] px-4 py-8 text-white md:py-12">
-    <div className="mx-auto max-w-[1180px] space-y-6">
+  return <div className="min-h-screen text-white">
+    <div className="mx-auto max-w-[1180px] space-y-6 px-4 pb-28 pt-5 md:px-6 lg:px-8 lg:pb-7 lg:pt-7">
       <header className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-5">
         <div><p className="text-xs font-bold uppercase tracking-[.2em] text-orange-300">BEARFIT / COACH PORTAL</p>
           <h1 className="mt-2 text-2xl font-black">Welcome{coach?", "+coach.display_name:""}</h1>
@@ -160,15 +161,16 @@ export default function CoachHomeClient({coach}:{coach:Coach|null}) {
       {error&&<p role="alert" className="rounded-xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-200">{error}</p>}
       {notice&&<p role="status" className="rounded-xl border border-green-400/20 bg-green-400/10 p-4 text-sm text-green-200">{notice}</p>}
       {(!coach||!coach.is_active)&&<p className="rounded-xl border border-amber-400/25 bg-amber-400/10 p-4">Your coach account is not linked or is inactive. Ask Admin for help.</p>}
-      {data&&coach&&<CoachMemberStyleOverview coach={coach} bookings={data.bookings||[]} conductions={data.conductions||[]} shifts={data.shifts||[]}/>}
+      {tab==="home"&&data&&coach&&<CoachMemberStyleOverview coach={coach} bookings={data.bookings||[]} conductions={data.conductions||[]} shifts={data.shifts||[]}/>}
+      {tab==="payments"&&<section className={card}><h2 className="text-xl font-bold">Client Payments &amp; Upcoming Dues</h2><p className="mt-3 text-sm text-white/60">For client privacy, payments are visible to Admin until coach-specific payment authorization is implemented.</p></section>}
       {loading?<p className={card}>Loading your schedule…</p>:data&&<>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {tab==="home"&&<div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <Metric name="Upcoming shifts" value={upcoming.length}/>
           <Metric name="Today's assigned shifts" value={todays.length}/>
           <Metric name="Approved conductions (31d)" value={conductions.filter(c=>c.status==="approved").length}/>
           <Metric name="Pending review" value={conductions.filter(c=>c.status==="pending").length}/>
-        </div>
-        <section className={card}>
+        </div>}
+        {tab==="schedule"&&<><section className={card}>
           <h2 className="flex items-center gap-2 text-lg font-bold"><CalendarDays size={19} className="text-[#ff7a1a]"/> Shift confirmation</h2>
           <p className="mt-2 text-sm text-white/50">Confirm by 8:00 PM Philippine time on the day before each scheduled shift. No reply is flagged as unconfirmed, not automatically absent.</p>
           <div className="mt-4 space-y-3">
@@ -253,23 +255,24 @@ export default function CoachHomeClient({coach}:{coach:Coach|null}) {
           </div>}
           <p className="mt-3 text-xs text-amber-200">A visitor-only pass is NOT gym or training authorization. Monthly free guest passes allow gym-only access, require an accompanying member, and cannot be used for personal training. Admin alone approves trials, X-deals and payments.</p>
         </section>
-        <section className={card}>
+        </>}
+        {tab==="activity"&&<section className={card}>
           <h2 className="flex items-center gap-2 text-lg font-bold"><ClipboardCheck size={19} className="text-[#ff7a1a]"/> My conductions</h2>
           <p className="mt-2 text-sm text-white/50">Verified member-level conduction records appear here once the integration is enabled; an empty list does not mean you were absent.</p>
           {conductions.length===0?<p className="mt-4 text-sm text-white/55">No verified conduction records yet.</p>:
           <div className="mt-4 space-y-2">{conductions.map(c=><div key={c.id} className="flex justify-between gap-3 border-b border-white/10 py-2 text-sm"><span>{c.session_date} · {c.member_name}</span><span>{c.status}</span></div>)}</div>}
         </section>
       </>}
-      <section className={card}>
+      {tab==="profile"&&<section className={card}>
         <h2 className="flex items-center gap-2 text-lg font-bold"><LockKeyhole size={18} className="text-[#ff7a1a]"/> Change password</h2>
         <form onSubmit={e=>void changePassword(e)} className="mt-4 grid gap-3 md:grid-cols-[1fr_1fr_auto]">
           <label className="text-xs text-white/60">New password<input type="password" autoComplete="new-password" minLength={12} maxLength={128} required value={password} onChange={e=>setPassword(e.target.value)} className="mt-1 w-full rounded-xl border border-white/15 bg-[#202020] px-3 py-2.5 text-sm"/></label>
           <label className="text-xs text-white/60">Confirm password<input type="password" autoComplete="new-password" minLength={12} maxLength={128} required value={confirm} onChange={e=>setConfirm(e.target.value)} className="mt-1 w-full rounded-xl border border-white/15 bg-[#202020] px-3 py-2.5 text-sm"/></label>
           <button className={btn+" self-end"} disabled={busy!==null}>Save password</button>
         </form>
-      </section>
+      </section>}
       <p className="flex items-center gap-2 text-xs text-white/45"><ShieldCheck size={14}/> Your attendance and shift responses are visible to Admin. Payroll calculation and member deductions are controlled separately.</p>
     </div>
-  </main>
+  </div>
 }
 function Metric({name,value}:{name:string;value:number}) {return <div className="rounded-xl border border-white/10 bg-[#141414] p-4"><p className="text-xs text-white/55">{name}</p><p className="mt-2 text-2xl font-black">{value}</p></div>}
