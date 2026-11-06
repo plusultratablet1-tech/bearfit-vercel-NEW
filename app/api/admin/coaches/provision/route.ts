@@ -45,10 +45,12 @@ export async function POST(request: Request) {
   if (coach.is_demo || !coach.is_active) return reply({ error: "Only active, real coaches can receive logins." }, 409)
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  // Prefer the current secret key. Fall back to the legacy service-role key
-  // only when its read-only privilege check proves it belongs to this project.
+  // BearFit's original Supabase integration owns its env variables and may
+  // still point to a retired project. A separately configured server-only key
+  // takes precedence; legacy keys remain fallbacks for safe rollout.
+  // Every candidate must pass the read-only roster access check below.
   const serverKeys = [...new Set(
-    [process.env.SUPABASE_SECRET_KEY, process.env.SUPABASE_SERVICE_ROLE_KEY]
+    [process.env.BEARFIT_SUPABASE_SECRET_KEY, process.env.SUPABASE_SECRET_KEY, process.env.SUPABASE_SERVICE_ROLE_KEY]
       .filter((key): key is string => Boolean(key?.trim()))
   )]
   if (!url || serverKeys.length === 0) return reply({ error: "Coach provisioning is not configured" }, 503)
@@ -70,7 +72,7 @@ export async function POST(request: Request) {
   }
   if (!privilegedAccessVerified) {
     return reply({
-      error: "Coach account service cannot access this Supabase project. An Admin must update the server-only Supabase secret key in Vercel.",
+      error: "Coach account service cannot access this Supabase project. Add a server-only BEARFIT_SUPABASE_SECRET_KEY for the correct project in Vercel, then redeploy.",
     }, 503)
   }
   const email = coach.username ? coachAliasEmail(coach.username) : null
