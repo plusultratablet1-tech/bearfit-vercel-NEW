@@ -261,7 +261,7 @@ export default function CoachHomeClient({coach,tab="home"}:{coach:Coach|null;tab
           <p className="mt-2 text-sm text-white/50">Verified member-level conduction records appear here once the integration is enabled; an empty list does not mean you were absent.</p>
           {conductions.length===0?<p className="mt-4 text-sm text-white/55">No verified conduction records yet.</p>:
           <div className="mt-4 space-y-2">{conductions.map(c=><div key={c.id} className="flex justify-between gap-3 border-b border-white/10 py-2 text-sm"><span>{c.session_date} · {c.member_name}</span><span>{c.status}</span></div>)}</div>}
-        </section>
+        </section>}
       </>}
       {tab==="profile"&&<section className={card}>
         <h2 className="flex items-center gap-2 text-lg font-bold"><LockKeyhole size={18} className="text-[#ff7a1a]"/> Change password</h2>
