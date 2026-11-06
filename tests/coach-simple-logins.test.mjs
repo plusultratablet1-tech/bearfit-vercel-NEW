@@ -121,3 +121,16 @@ test("dedicated BearFit Supabase secret takes precedence over integration-owned 
   assert.match(route,/process\.env\.BEARFIT_SUPABASE_SECRET_KEY, process\.env\.SUPABASE_SECRET_KEY/)
   assert.match(route,/privilegedCoach\?\.id === coach\.id/)
 })
+
+test("coach signup requires a one-time Admin authorization instead of initial Auth app metadata",()=>{
+  const migration=read("supabase/migrations/20261106114500_coach_one_time_signup_authorization.sql")
+  assert.match(route,/admin_issue_coach_signup_token/)
+  assert.match(route,/bearfit_coach_signup_token: signupToken/)
+  assert.match(migration,/auth\.uid\(\)/)
+  assert.match(migration,/role='admin'/)
+  assert.match(migration,/coach_signup_authorizations/)
+  assert.match(migration,/a\.used_at is null and a\.expires_at>now\(\)/)
+  assert.match(migration,/v_authorized_coach is null/)
+  assert.match(migration,/revoke all on private\.coach_signup_authorizations from public, anon, authenticated/)
+  assert.doesNotMatch(migration,/bearfit_coach_login'\)::boolean/)
+})
