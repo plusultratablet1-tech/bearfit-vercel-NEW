@@ -98,3 +98,12 @@ test("coach signup creates only profile and no fake member",()=>{
   assert.match(migration,/Reserved coach logins must be provisioned by BearFit Admin/)
   assert.match(migration,/values\(new.id,'member',v_member_id/)
 })
+
+test("generated coach password is displayed in a visible dialog and errors beside the coach",()=>{
+  assert.match(directory,/role="dialog" aria-modal="true"/)
+  assert.match(directory,/New coach login — copy now/)
+  assert.match(directory,/loginError\?\.coachId===coach\.id/)
+  assert.match(directory,/Coach login not confirmed:/)
+  assert.match(directory,/Server did not return the new password/)
+  assert.match(directory,/I've saved it — close/)
+})
