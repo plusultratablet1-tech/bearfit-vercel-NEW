@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { parseGuestCode } from "@/lib/guest-qr"
+import CoachMemberStyleOverview from "./CoachMemberStyleOverview"
 import { CalendarDays, CheckCircle2, Clock3, ClipboardCheck, LogOut, QrCode, ShieldCheck, RefreshCw, LockKeyhole } from "lucide-react"
 
 const supabase = createClient()
@@ -148,7 +149,7 @@ export default function CoachHomeClient({coach}:{coach:Coach|null}) {
   const card="rounded-[24px] border border-white/10 bg-[#141414] p-5"
   const btn="rounded-xl bg-[#ff7a1a] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-40"
   return <main className="min-h-screen bg-[#020b1c] px-4 py-8 text-white md:py-12">
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto max-w-[1180px] space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-5">
         <div><p className="text-xs font-bold uppercase tracking-[.2em] text-orange-300">BEARFIT / COACH PORTAL</p>
           <h1 className="mt-2 text-2xl font-black">Welcome{coach?", "+coach.display_name:""}</h1>
@@ -159,6 +160,7 @@ export default function CoachHomeClient({coach}:{coach:Coach|null}) {
       {error&&<p role="alert" className="rounded-xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-200">{error}</p>}
       {notice&&<p role="status" className="rounded-xl border border-green-400/20 bg-green-400/10 p-4 text-sm text-green-200">{notice}</p>}
       {(!coach||!coach.is_active)&&<p className="rounded-xl border border-amber-400/25 bg-amber-400/10 p-4">Your coach account is not linked or is inactive. Ask Admin for help.</p>}
+      {data&&coach&&<CoachMemberStyleOverview coach={coach} bookings={data.bookings||[]} conductions={data.conductions||[]} shifts={data.shifts||[]}/>}
       {loading?<p className={card}>Loading your schedule…</p>:data&&<>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <Metric name="Upcoming shifts" value={upcoming.length}/>
