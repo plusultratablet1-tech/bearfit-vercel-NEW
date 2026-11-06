@@ -43,6 +43,7 @@ export default function CoachDirectoryClient() {
   const [branchDraft, setBranchDraft] = useState<Record<string, string>>({})
   const [userDraft, setUserDraft] = useState<Record<string, string>>({})
   const [credentials, setCredentials] = useState<{ coach: string; username: string; temporaryPassword: string } | null>(null)
+  const [loginError, setLoginError] = useState<{ coachId: string; message: string } | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -150,7 +151,7 @@ export default function CoachDirectoryClient() {
     if (!coach.username) return setError("Coach username must be assigned first.")
     const label = action === "create" ? "Create" : "Reset password for"
     if (!window.confirm(label + " " + coach.username + " (" + coach.display_name + ")? A new secure temporary password will be shown only once.")) return
-    setError(null); setNotice(null); setCredentials(null); setBusy(coach.id + ":login")
+    setError(null); setNotice(null); setCredentials(null); setLoginError(null); setBusy(coach.id + ":login")
     try {
       const response = await fetch("/api/admin/coaches/provision", {
         method: "POST",
@@ -158,8 +159,13 @@ export default function CoachDirectoryClient() {
         cache: "no-store",
         body: JSON.stringify({ coachId: coach.id, action }),
       })
-      const result = await response.json()
-      if (!response.ok) throw new Error(result.error || "Unable to provision coach login")
+      const result = (await response.json().catch(() => ({}))) as {
+        error?: string; username?: string; temporaryPassword?: string
+      }
+      if (!response.ok) throw new Error(result.error || "Coach login service failed (HTTP " + response.status + ").")
+      if (!result.username || !result.temporaryPassword) {
+        throw new Error("Server did not return the new password. Check whether the login was created before trying again.")
+      }
       setCredentials({
         coach: coach.display_name,
         username: result.username,
@@ -168,7 +174,8 @@ export default function CoachDirectoryClient() {
       setNotice("Coach login updated. Copy and privately share the temporary password before closing this message.")
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to provision coach login")
+      const message = err instanceof Error ? err.message : "Unable to provision coach login"
+      setLoginError({ coachId: coach.id, message })
     } finally {
       setBusy(null)
     }
@@ -197,18 +204,27 @@ export default function CoachDirectoryClient() {
       {error && <p role="alert" className="mt-4 rounded-xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-200">{error}</p>}
       {notice && <p role="status" className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/10 p-4 text-sm text-emerald-200"><CheckCircle2 size={18}/>{notice}</p>}
       {credentials && (
-        <section className="mt-4 rounded-2xl border border-amber-400/40 bg-[#392710] p-4">
-          <h2 className="font-bold text-amber-100">New coach login — copy now</h2>
-          <p className="mt-1 text-xs text-amber-100/80">This temporary password will disappear when this message closes or the page reloads. Share it privately, not in a public chat or screenshot.</p>
-          <p className="mt-3 text-sm text-white/70">{credentials.coach}</p>
-          <p className="mt-1 text-sm"><strong>Username:</strong> <span className="select-all font-mono">{credentials.username}</span></p>
-          <p className="mt-1 break-all text-sm"><strong>Temporary password:</strong> <span className="select-all font-mono">{credentials.temporaryPassword}</span></p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button type="button" onClick={() => void navigator.clipboard.writeText("Username: " + credentials.username + "\nTemporary password: " + credentials.temporaryPassword)}
-              className="rounded-xl bg-[#ff7a1a] px-4 py-2.5 text-sm font-bold">Copy credentials</button>
-            <button type="button" onClick={() => setCredentials(null)} className="rounded-xl border border-white/20 px-4 py-2.5 text-sm font-semibold">Close and clear</button>
-          </div>
-        </section>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/85 p-4">
+          <section role="dialog" aria-modal="true" aria-labelledby="coach-login-credentials-title"
+            className="w-full max-w-lg rounded-2xl border border-amber-400/50 bg-[#392710] p-5 shadow-2xl">
+            <h2 id="coach-login-credentials-title" className="text-xl font-bold text-amber-100">New coach login — copy now</h2>
+            <p className="mt-2 text-sm text-amber-100/80">Your login was created. This password is shown only once. Save it securely before closing this window.</p>
+            <p className="mt-4 text-sm font-bold text-white">{credentials.coach}</p>
+            <div className="mt-3 rounded-xl border border-white/15 bg-black/30 p-4">
+              <p className="text-xs text-white/60">Username</p>
+              <p className="select-all font-mono text-base">{credentials.username}</p>
+              <p className="mt-3 text-xs text-white/60">Temporary password</p>
+              <p className="select-all break-all font-mono text-base">{credentials.temporaryPassword}</p>
+            </div>
+            <p className="mt-3 text-xs text-amber-100/70">Share privately with the coach. Never send the password in a public chat or screenshot.</p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <button type="button" onClick={() => void navigator.clipboard.writeText("Username: " + credentials.username + "\nTemporary password: " + credentials.temporaryPassword)}
+                className="rounded-xl bg-[#ff7a1a] px-4 py-2.5 text-sm font-bold">Copy credentials</button>
+              <button type="button" onClick={() => setCredentials(null)}
+                className="rounded-xl border border-white/20 px-4 py-2.5 text-sm font-semibold">I've saved it — close</button>
+            </div>
+          </section>
+        </div>
       )}
       <div className="mt-5 grid gap-3 sm:grid-cols-3">
         <Stat label="Coach identities" value={summary.total} />
@@ -255,6 +271,12 @@ export default function CoachDirectoryClient() {
                   className="mt-3 rounded-xl bg-[#ff7a1a] px-4 py-2.5 text-sm font-bold disabled:opacity-40">
                   {busy === coach.id + ":login" ? "Working…" : coach.user_id ? "Reset coach password" : "Create coach login"}
                 </button>}
+                <p className="mt-2 text-xs text-white/50">Press OK in the confirmation box. The password appears in a separate window after successful creation.</p>
+                {loginError?.coachId===coach.id && (
+                  <p role="alert" className="mt-3 rounded-xl border border-red-400/40 bg-red-500/10 p-3 text-sm text-red-200">
+                    Coach login not confirmed: {loginError.message}
+                  </p>
+                )}
               </div>
               <div className="mt-5 grid gap-4 lg:grid-cols-2">
                 <div className="rounded-2xl border border-white/10 bg-[#101725] p-4">
