@@ -107,3 +107,12 @@ test("generated coach password is displayed in a visible dialog and errors besid
   assert.match(directory,/Server did not return the new password/)
   assert.match(directory,/I've saved it — close/)
 })
+
+test("coach provisioning resolves identity through verified Admin session and checks privileged access",()=>{
+  assert.match(route,/await session\.from\("coaches"\)/)
+  assert.match(route,/coach\.is_demo \|\| !coach\.is_active/)
+  assert.match(route,/process\.env\.SUPABASE_SECRET_KEY, process\.env\.SUPABASE_SERVICE_ROLE_KEY/)
+  assert.match(route,/privilegedCoach\?\.id === coach\.id/)
+  assert.match(route,/cannot access this Supabase project/)
+  assert.doesNotMatch(route,/if \(coachError \|\| !coach\) return reply\(\{ error: "Coach not found"/)
+})

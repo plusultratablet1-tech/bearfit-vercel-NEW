@@ -12,6 +12,8 @@ type CoachRecord = {
   branch: string
   username: string | null
   user_id: string | null
+  is_active: boolean
+  is_demo: boolean
 }
 
 function reply(body: Record<string, unknown>, status = 200) {
@@ -32,15 +34,45 @@ export async function POST(request: Request) {
   if (typeof coachId !== "string" || !/^[0-9a-f-]{36}$/i.test(coachId) ||
       (action !== "create" && action !== "reset")) return reply({ error: "Invalid coach action" }, 400)
 
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY
+  // The authenticated Admin can already see this coach via RLS in the directory.
+  // Resolve the identity using the same verified session so a stale server key
+  // cannot turn a real coach into a misleading "Coach not found" response.
+  const { data: coach, error: coachError } = await session.from("coaches")
+    .select("id,display_name,branch,username,user_id,is_active,is_demo")
+    .eq("id", coachId).maybeSingle<CoachRecord>()
+  if (coachError) return reply({ error: "Unable to read coach record. Reload the directory and try again." }, 503)
+  if (!coach) return reply({ error: "Coach record is missing or not visible to your Admin account." }, 404)
+  if (coach.is_demo || !coach.is_active) return reply({ error: "Only active, real coaches can receive logins." }, 409)
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  if (!key || !url) return reply({ error: "Coach provisioning is not configured" }, 503)
-  const admin = createSupabaseAdminClient(url, key, {
+  // Prefer the current secret key. Fall back to the legacy service-role key
+  // only when its read-only privilege check proves it belongs to this project.
+  const serverKeys = [...new Set(
+    [process.env.SUPABASE_SECRET_KEY, process.env.SUPABASE_SERVICE_ROLE_KEY]
+      .filter((key): key is string => Boolean(key?.trim()))
+  )]
+  if (!url || serverKeys.length === 0) return reply({ error: "Coach provisioning is not configured" }, 503)
+
+  const candidates = serverKeys.map((key) => createSupabaseAdminClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
-  })
-  const { data: coach, error: coachError } = await admin.from("coaches")
-    .select("id,display_name,branch,username,user_id").eq("id", coachId).maybeSingle<CoachRecord>()
-  if (coachError || !coach) return reply({ error: "Coach not found" }, 404)
+  }))
+  let admin = candidates[0]
+  let privilegedAccessVerified = false
+  for (const candidate of candidates) {
+    // Read-only preflight: never create a user with an unverified server key.
+    const { data: privilegedCoach, error: accessError } = await candidate.from("coaches")
+      .select("id").eq("id", coachId).maybeSingle()
+    if (!accessError && privilegedCoach?.id === coach.id) {
+      admin = candidate
+      privilegedAccessVerified = true
+      break
+    }
+  }
+  if (!privilegedAccessVerified) {
+    return reply({
+      error: "Coach account service cannot access this Supabase project. An Admin must update the server-only Supabase secret key in Vercel.",
+    }, 503)
+  }
   const email = coach.username ? coachAliasEmail(coach.username) : null
   if (!email) return reply({ error: "Coach username not configured" }, 400)
 
@@ -65,7 +97,12 @@ export async function POST(request: Request) {
     user_metadata: { full_name: coach.display_name },
     app_metadata: { bearfit_coach_login: true },
   })
-  if (createError || !created.user) return reply({ error: "Unable to create coach account. It may already exist." }, 409)
+  if (createError || !created.user) {
+    if (createError?.status === 401 || createError?.status === 403) {
+      return reply({ error: "Supabase server credentials cannot create Auth users. Check this project's server-only secret key in Vercel." }, 503)
+    }
+    return reply({ error: "Unable to create coach account. It may already exist." }, 409)
+  }
 
   // The auth.users signup trigger creates a member profile; upgrade it to a
   // coach role before linking so new credentials never inherit broad staff access.
