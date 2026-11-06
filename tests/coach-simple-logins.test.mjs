@@ -116,3 +116,8 @@ test("coach provisioning resolves identity through verified Admin session and ch
   assert.match(route,/cannot access this Supabase project/)
   assert.doesNotMatch(route,/if \(coachError \|\| !coach\) return reply\(\{ error: "Coach not found"/)
 })
+
+test("dedicated BearFit Supabase secret takes precedence over integration-owned keys",()=>{
+  assert.match(route,/process\.env\.BEARFIT_SUPABASE_SECRET_KEY, process\.env\.SUPABASE_SECRET_KEY/)
+  assert.match(route,/privilegedCoach\?\.id === coach\.id/)
+})
