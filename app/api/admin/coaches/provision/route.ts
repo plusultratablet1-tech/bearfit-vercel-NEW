@@ -53,20 +53,22 @@ export async function POST(request: Request) {
   )]
   if (!url || serverKeys.length === 0) return reply({ error: "Coach provisioning is not configured" }, 503)
 
-  let admin: ReturnType<typeof createSupabaseAdminClient> | null = null
-  for (const key of serverKeys) {
-    const candidate = createSupabaseAdminClient(url, key, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    })
+  const candidates = serverKeys.map((key) => createSupabaseAdminClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  }))
+  let admin = candidates[0]
+  let privilegedAccessVerified = false
+  for (const candidate of candidates) {
     // Read-only preflight: never create a user with an unverified server key.
     const { data: privilegedCoach, error: accessError } = await candidate.from("coaches")
       .select("id").eq("id", coachId).maybeSingle()
     if (!accessError && privilegedCoach?.id === coach.id) {
       admin = candidate
+      privilegedAccessVerified = true
       break
     }
   }
-  if (!admin) {
+  if (!privilegedAccessVerified) {
     return reply({
       error: "Coach account service cannot access this Supabase project. An Admin must update the server-only Supabase secret key in Vercel.",
     }, 503)
