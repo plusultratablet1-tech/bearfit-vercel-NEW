@@ -92,18 +92,31 @@ export async function POST(request: Request) {
   }
 
   if (coach.user_id) return reply({ error: "This coach already has a linked account. Use Reset password instead." }, 409)
+
+  // Supabase Auth does not reliably include app_metadata in the initial auth.users
+  // INSERT. The coach signup trigger therefore requires a one-time, short-lived
+  // authorization token that ONLY an authenticated BearFit Admin can issue.
+  // A public signup cannot issue or guess this token.
+  const { data: signupToken, error: tokenError } = await session.rpc(
+    "admin_issue_coach_signup_token", { p_coach_id: coach.id }
+  )
+  if (tokenError || typeof signupToken !== "string" || !signupToken) {
+    return reply({ error: "Coach signup authorization is unavailable. Contact Admin to check the coach signup security migration." }, 503)
+  }
   const { data: created, error: createError } = await admin.auth.admin.createUser({
     email,
     password: temporaryPassword,
     email_confirm: true,
-    user_metadata: { full_name: coach.display_name },
+    // This nonce is consumed inside the auth.users trigger in the same transaction
+    // as creation. It is NOT a login password, an authorization role, or a JWT claim.
+    user_metadata: { full_name: coach.display_name, bearfit_coach_signup_token: signupToken },
     app_metadata: { bearfit_coach_login: true },
   })
   if (createError || !created.user) {
     if (createError?.status === 401 || createError?.status === 403) {
       return reply({ error: "Supabase server credentials cannot create Auth users. Check this project's server-only secret key in Vercel." }, 503)
     }
-    return reply({ error: "Unable to create coach account. It may already exist." }, 409)
+    return reply({ error: "Supabase could not create the coach account. Check the Supabase Auth logs; the reserved username is not necessarily taken." }, 502)
   }
 
   // The auth.users signup trigger creates a member profile; upgrade it to a
@@ -123,6 +136,12 @@ export async function POST(request: Request) {
     await admin.auth.admin.deleteUser(userId)
     return reply({ error: "Coach account linkage could not be confirmed; account creation was rolled back" }, 409)
   }
+
+  // Remove the now-consumed one-time token from user-visible Auth metadata.
+  // This does not affect the linked profile or login password if cleanup fails.
+  await admin.auth.admin.updateUserById(userId, {
+    user_metadata: { full_name: coach.display_name },
+  })
 
   return reply({ username: coach.username, temporaryPassword, message: "Coach account created and linked. Copy the temporary password now; it will not be shown again." }, 201)
 }
