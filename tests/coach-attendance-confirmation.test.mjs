@@ -4,6 +4,8 @@ import assert from "node:assert/strict"
 
 const sql=fs.readFileSync("supabase/migrations/20261012170000_coach_attendance_and_confirmations.sql","utf8")
 const coach=fs.readFileSync("app/coach/CoachHomeClient.tsx","utf8")
+const schedule=fs.readFileSync("app/coach/CoachScheduleOverview.tsx","utf8")
+const qr=fs.readFileSync("app/coach/CoachQrPage.tsx","utf8")
 const admin=fs.readFileSync("app/staff/coaches/attendance/CoachAttendanceAdminClient.tsx","utf8")
 const board=fs.readFileSync("lib/coach-attendance-board.ts","utf8")
 const adminPage=fs.readFileSync("app/staff/coaches/attendance/page.tsx","utf8")
@@ -36,7 +38,8 @@ test("05 unavailable response requires reason",()=>{
 test("06 shift response and attendance are different records",()=>{
  assert.match(sql,/create table public\.coach_work_shifts/)
  assert.match(sql,/alter table public\.coach_shifts add column work_shift_id/)
- assert.match(coach,/Verified time-in/)
+ assert.match(coach,/coach_gps_time_punch/)
+ assert.match(schedule,/Clocked in:/)
 })
 test("07 on-site code uses 48 bits of randomness and 2 minute TTL",()=>{
  assert.match(sql,/extensions\.gen_random_bytes\(6\)/)
@@ -94,7 +97,9 @@ test("17 coach QR preview is read-only with confirmed assigned booking",()=>{
  assert.match(sql,/public\.coach_member_qr_preview\(p_member_code text\)/)
  assert.match(sql,/b\.status='confirmed'/)
  assert.match(sql,/b\.assigned_coach_user_id=v_coach\.user_id/)
- assert.match(coach,/Preview only for now/)
+ assert.match(qr,/coach_qr_session/)
+ assert.doesNotMatch(coach,/Member QR scanner|coach_member_qr_preview/)
+ assert.doesNotMatch(coach,/Verified time-in \/ time-out/)
  assert.doesNotMatch(sql,/private\.consume_package_session/)
 })
 test("18 no coach payment or session balance modification exists in migration",()=>{

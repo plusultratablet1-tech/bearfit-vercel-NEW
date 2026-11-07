@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
+import { useCallback, useEffect, useState, type FormEvent } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { parseGuestCode } from "@/lib/guest-qr"
 import CoachDashboardMemberLayout from "./CoachDashboardMemberLayout"
@@ -15,7 +15,6 @@ type Shift = { id: string; starts_at: string; ends_at: string; branch: string; r
 type Booking = { id: string; start_at: string; end_at: string; branch: string; session_label: string | null; session_type: string; status: string; member_name: string; member_code: string }
 type Conduction = { id: string; session_date: string; status: "pending" | "approved" | "rejected"; member_name: string }
 type Dashboard = { coach_id: string; name: string; username: string; branch: string; shifts: Shift[]; bookings: Booking[]; conductions: Conduction[] }
-type Preview = { member_name: string; member_code: string; booking_id: string; start_at: string; session_label: string | null; note: string }
 type GuestPreview = { status: string;guest_name:string;branch:string;purpose:string;permitted_service:string;visit_day:string;hosting_member_name?:string;host_arrival_confirmed?:boolean }
 function format(v: string) { return new Intl.DateTimeFormat("en-PH", { timeZone:"Asia/Manila",dateStyle:"medium",timeStyle:"short" }).format(new Date(v)) }
 function dateOnly(v: string) {
@@ -27,11 +26,6 @@ function deadlineLabel(shift: Shift) {
   const day = new Date(Date.parse(dateOnly(shift.starts_at)+"T12:00:00Z") - 86400000).toISOString().slice(0,10)
   return day + " at 8:00 PM (PH)"
 }
-function normalizeCode(raw:string) {
-  const direct=raw.trim().match(/\bM\d{3,}\b/i)
-  if(direct) return direct[0].toUpperCase()
-  try { const u=new URL(raw);return u.searchParams.get("member")?.match(/\bM\d{3,}\b/i)?.[0]?.toUpperCase()??"" } catch { return "" }
-}
 type CoachTab = "home" | "schedule" | "payments" | "profile"
 export default function CoachHomeClient({coach,tab="home"}:{coach:Coach|null;tab?:CoachTab}) {
   const [data,setData]=useState<Dashboard|null>(null)
@@ -40,19 +34,11 @@ export default function CoachHomeClient({coach,tab="home"}:{coach:Coach|null;tab
   const [error,setError]=useState("")
   const [notice,setNotice]=useState("")
   const [reason,setReason]=useState<Record<string,string>>({})
-  const [branchCode,setBranchCode]=useState("")
-  const [memberCode,setMemberCode]=useState("")
   const [guestCode,setGuestCode]=useState("")
   const [guestPreview,setGuestPreview]=useState<GuestPreview|null>(null)
   const [guestWitnessed,setGuestWitnessed]=useState(false)
-  const [preview,setPreview]=useState<Preview|null>(null)
   const [password,setPassword]=useState("")
   const [confirm,setConfirm]=useState("")
-  const [scanner,setScanner]=useState(false)
-  const videoRef=useRef<HTMLVideoElement|null>(null)
-  const streamRef=useRef<MediaStream|null>(null)
-  const cameraRef=useRef<number|undefined>(undefined)
-  const [scannerError,setScannerError]=useState("")
   const refresh=useCallback(async()=>{
     if(!coach?.is_active) {setLoading(false);return}
     setLoading(true)
@@ -62,37 +48,6 @@ export default function CoachHomeClient({coach,tab="home"}:{coach:Coach|null;tab
     setLoading(false)
   },[coach?.is_active])
   useEffect(()=>{void refresh()},[refresh])
-  useEffect(()=>{
-    if(!scanner)return
-    let cancelled=false
-    async function run() {
-      const Detector=(window as unknown as {BarcodeDetector?:new(opts:{formats:string[]})=>{detect:(v:HTMLVideoElement)=>Promise<Array<{rawValue?:string}>>}}).BarcodeDetector
-      if(!Detector){setScannerError("Camera scanning is not supported here. Enter the member code manually.");return}
-      try {
-        const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"},audio:false})
-        if(cancelled){stream.getTracks().forEach(t=>t.stop());return}
-        streamRef.current=stream
-        if(!videoRef.current)return
-        videoRef.current.srcObject=stream
-        await videoRef.current.play()
-        const d=new Detector({formats:["qr_code"]})
-        const tick=async()=>{
-          if(cancelled||!videoRef.current)return
-          try{
-            const codes=await d.detect(videoRef.current)
-            const guest=parseGuestCode(codes[0]?.rawValue??"")
-            if(guest){setGuestCode(guest);setGuestPreview(null);setGuestWitnessed(false);setScanner(false);return}
-            const member=normalizeCode(codes[0]?.rawValue??"")
-            if(member){setMemberCode(member);setScanner(false);return}
-          }catch{}
-          if(!cancelled)cameraRef.current=requestAnimationFrame(()=>void tick())
-        }
-        void tick()
-      }catch(e){setScannerError(e instanceof Error?e.message:"Unable to start camera")}
-    }
-    void run()
-    return()=>{cancelled=true;if(cameraRef.current!==undefined)cancelAnimationFrame(cameraRef.current);streamRef.current?.getTracks().forEach(t=>t.stop());streamRef.current=null}
-  },[scanner])
   async function respond(id:string,response:"confirmed"|"unavailable") {
     if(response==="unavailable" && (reason[id]||"").trim().length<5){setError("Please enter a reason of at least five characters.");return}
     setBusy(id+":response");setError("");setNotice("")
@@ -123,16 +78,6 @@ export default function CoachHomeClient({coach,tab="home"}:{coach:Coach|null;tab
       setGuestPreview(result as GuestPreview)
       if(redeem){setGuestCode("");setNotice("Guest entry recorded. This pass cannot be reused.");}
     }
-  }
-  async function memberLookup(event:FormEvent<HTMLFormElement>){
-    event.preventDefault();setError("");setNotice("");setPreview(null)
-    const member=normalizeCode(memberCode)
-    if(!member){setError("Enter or scan a valid member QR code (e.g., M0001).");return}
-    setBusy("preview")
-    const {data:result,error:e}=await supabase.rpc("coach_member_qr_preview",{p_member_code:member})
-    if(e)setError(e.message)
-    else setPreview(result as Preview)
-    setBusy(null)
   }
   async function changePassword(event:FormEvent<HTMLFormElement>){
     event.preventDefault();setError("");setNotice("")
@@ -173,7 +118,7 @@ export default function CoachHomeClient({coach,tab="home"}:{coach:Coach|null;tab
           <Metric name="Approved conductions (31d)" value={conductions.filter(c=>c.status==="approved").length}/>
           <Metric name="Pending review" value={conductions.filter(c=>c.status==="pending").length}/>
         </div>}
-        {tab==="schedule"&&<><CoachScheduleOverview shifts={data.shifts||[]} onRefresh={refresh} onPunch={punch} punchBusy={busy!==null}/><details className="rounded-[24px] border border-white/10 bg-[#121212] p-4 md:p-6"><summary className="cursor-pointer text-lg font-bold text-orange-300">Shift confirmation, verified attendance & guest operations</summary><div className="mt-5 space-y-5"><section className={card}>
+        {tab==="schedule"&&<><CoachScheduleOverview shifts={data.shifts||[]} onRefresh={refresh} onPunch={punch} punchBusy={busy!==null}/><details className="rounded-[24px] border border-white/10 bg-[#121212] p-4 md:p-6"><summary className="cursor-pointer text-lg font-bold text-orange-300">Shift confirmation & guest operations</summary><div className="mt-5 space-y-5"><section className={card}>
           <h2 className="flex items-center gap-2 text-lg font-bold"><CalendarDays size={19} className="text-[#ff7a1a]"/> Shift confirmation</h2>
           <p className="mt-2 text-sm text-white/50">Confirm by 8:00 PM Philippine time on the day before each scheduled shift. No reply is flagged as unconfirmed, not automatically absent.</p>
           <div className="mt-4 space-y-3">
@@ -194,47 +139,14 @@ export default function CoachHomeClient({coach,tab="home"}:{coach:Coach|null;tab
           </div>
         </section>
         <section className={card}>
-          <h2 className="flex items-center gap-2 text-lg font-bold"><Clock3 size={19} className="text-[#ff7a1a]"/> Verified time-in / time-out</h2>
-          <p className="mt-2 text-sm text-white/50">At the branch, ask reception for the current attendance code. Each code expires after 2 minutes. A code verifies possession, not physical location with certainty.</p>
-          <label className="mt-4 block text-xs font-medium text-white/70">Current branch attendance code
-            <input value={branchCode} onChange={e=>setBranchCode(e.target.value.toUpperCase().slice(0,12))}
-              placeholder="12-character code" maxLength={12} autoCapitalize="characters"
-              className="mt-2 block w-full rounded-xl border border-white/15 bg-[#202020] px-4 py-3 font-mono tracking-widest md:max-w-sm"/>
-          </label>
-          <div className="mt-4 space-y-3">
-            {upcoming.length===0&&<p className="text-sm text-white/55">No assigned shift available for clock-in.</p>}
-            {upcoming.map(s=><div key={s.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 p-3">
-              <div><p className="font-medium">{format(s.starts_at)}</p>
-                <p className="text-xs text-white/50">Time in: {s.clock_in_at?format(s.clock_in_at):"Not yet"} · Time out: {s.clock_out_at?format(s.clock_out_at):"Not yet"}</p></div>
-              {s.clock_in_at&&!s.clock_out_at?<button disabled={busy!==null} className={btn} onClick={()=>setError("Use the verified GPS Clock Out button at the top of Schedule.")}>Clock out</button>:
-                !s.clock_in_at?<button disabled={busy!==null} className={btn} onClick={()=>setError("Use the verified GPS Clock In button at the top of Schedule.")}>Clock in</button>:<span className="text-sm text-emerald-300">Shift completed</span>}
-            </div>)}
-          </div>
-        </section>
-        <section className={card}>
           <h2 className="flex items-center gap-2 text-lg font-bold"><CalendarDays size={19} className="text-[#ff7a1a]"/> My member sessions</h2>
           <p className="mt-2 text-sm text-white/50">Only bookings linked to your coach login appear here. Ask Admin to assign the booking to you if anything is missing.</p>
           {assigned.length===0?<p className="mt-4 text-sm text-white/55">No linked member bookings in this period.</p>:
           <div className="mt-4 space-y-2">{assigned.map(b=><div key={b.id} className="flex flex-wrap justify-between gap-2 rounded-xl border border-white/10 p-3 text-sm"><div><strong>{format(b.start_at)}</strong> · {b.member_name}<p className="text-xs text-white/50">{b.member_code} · {b.session_label||b.session_type}</p></div><span className={b.status==="completed"?"text-emerald-300":"text-white/60"}>{b.status}</span></div>)}</div>}
         </section>
         <section className={card}>
-          <h2 className="flex items-center gap-2 text-lg font-bold"><QrCode size={19} className="text-[#ff7a1a]"/> Member QR scanner</h2>
-          <p className="mt-2 text-sm text-amber-200">Preview only for now. Coach scanning will not deduct a member session or credit payroll until the supervised QR check-in integration passes transaction testing.</p>
-          <form onSubmit={e=>void memberLookup(e)} className="mt-4 flex flex-wrap gap-2">
-            <input value={memberCode} onChange={e=>setMemberCode(e.target.value)} placeholder="Scan or enter M0001" className="min-w-0 flex-1 rounded-xl border border-white/15 bg-[#202020] px-4 py-3 text-sm"/>
-            <button disabled={busy!==null} className={btn}>Verify assignment</button>
-            <button type="button" onClick={()=>{setScanner(v=>!v);setScannerError("")}} className="rounded-xl border border-white/20 px-3 py-2 text-sm">{scanner?"Stop camera":"Scan QR"}</button>
-          </form>
-          {scanner&&<div className="mt-3"><video ref={videoRef} muted playsInline className="h-56 w-full rounded-xl bg-black object-cover"/>{scannerError&&<p className="text-sm text-amber-300">{scannerError}</p>}</div>}
-          {preview&&<div className="mt-4 rounded-xl border border-emerald-400/20 bg-emerald-500/5 p-4">
-            <p className="font-bold">{preview.member_name} · {preview.member_code}</p>
-            <p className="mt-1 text-sm text-white/60">{format(preview.start_at)} · {preview.session_label||"Booked training"}</p>
-            <p className="mt-2 text-xs text-amber-200">{preview.note}</p>
-          </div>}
-        </section>
-        <section className={card}>
           <h2 className="flex items-center gap-2 text-lg font-bold"><QrCode size={19} className="text-[#ff7a1a]"/> Guest admission</h2>
-          <p className="mt-2 text-sm text-white/55">Scan your guest's separate BearFit access QR with the camera above, or paste its credential here. You must first have a verified open clock-in at the same branch. Guest passes never deduct member sessions.</p>
+          <p className="mt-2 text-sm text-white/55">Enter the guest pass credential below. Guest admission requires a verified open GPS clock-in at the same branch. Guest passes never deduct member sessions.</p>
           <div className="mt-4 flex flex-wrap gap-2">
             <input aria-label="Guest QR credential" value={guestCode} onChange={e=>{setGuestCode(e.target.value);setGuestPreview(null);setGuestWitnessed(false)}}
               placeholder="BEARFIT-GUEST:… or 32-digit code" className="min-w-0 flex-1 rounded-xl border border-white/15 bg-[#202020] px-3 py-3 text-sm"/>
