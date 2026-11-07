@@ -1,6 +1,7 @@
 "use client"
 
 import StaffAppShell from "@/components/bearfit/StaffAppShell"
+import CoachScheduleFeedbackInbox from "./CoachScheduleFeedbackInbox"
 import { useEffect, useState, type FormEvent } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { SESSION_TAXONOMY, categoryForSessionLabel, displaySessionLabel } from "@/lib/session-taxonomy"
@@ -124,6 +125,7 @@ export default function StaffSchedulePageClient({ role, currentUserId }: { role:
     </div> })}</div></div>
       <aside className="rounded-[24px] border border-white/10 bg-[#141414] p-5"><h2 className="text-xl font-bold">Upcoming slots</h2><div className="mt-4 space-y-3">{slots.slice(0, 12).map(s => <div key={s.id} className="rounded-2xl bg-white/5 p-4"><b>{displaySessionLabel(s.session_label, s.session_type)}</b><div className="text-xs text-white/50">{fmt(s.start_at)}</div><div className="text-xs text-white/45">{s.branch} · capacity {s.capacity}</div></div>)}</div></aside>
     </section>
+    <CoachScheduleFeedbackInbox/>
   </div></StaffAppShell>
 }
 function Inp({ v, set, ph, type = "text" }: { v: string; set: (v: string) => void; ph?: string; type?: string }) { return <input value={v} onChange={e => set(e.target.value)} placeholder={ph} type={type} className="rounded-xl bg-[#242424] p-3 text-sm"/> }
