@@ -6,6 +6,7 @@ import { parseGuestCode } from "@/lib/guest-qr"
 import CoachDashboardMemberLayout from "./CoachDashboardMemberLayout"
 import CoachActivityPanel from "./CoachActivityPanel"
 import CoachScheduleOverview from "./CoachScheduleOverview"
+import CoachPaymentsDashboard from "./CoachPaymentsDashboard"
 import { CalendarDays, CheckCircle2, Clock3, ClipboardCheck, LogOut, QrCode, ShieldCheck, RefreshCw, LockKeyhole } from "lucide-react"
 
 const supabase = createClient()
@@ -164,7 +165,7 @@ export default function CoachHomeClient({coach,tab="home"}:{coach:Coach|null;tab
       {notice&&<p role="status" className="rounded-xl border border-green-400/20 bg-green-400/10 p-4 text-sm text-green-200">{notice}</p>}
       {(!coach||!coach.is_active)&&<p className="rounded-xl border border-amber-400/25 bg-amber-400/10 p-4">Your coach account is not linked or is inactive. Ask Admin for help.</p>}
       {tab==="home"&&data&&coach&&<CoachDashboardMemberLayout coach={coach} bookings={data.bookings||[]} conductions={data.conductions||[]} shifts={data.shifts||[]}/>}
-      {tab==="payments"&&<section className={card}><h2 className="text-xl font-bold">Client Payments &amp; Upcoming Dues</h2><p className="mt-3 text-sm text-white/60">For client privacy, payments are visible to Admin until coach-specific payment authorization is implemented.</p></section>}
+      {tab==="payments"&&<CoachPaymentsDashboard/>}}
       {loading?<p className={card}>Loading your schedule…</p>:data&&<>
         {tab==="home"&&<div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <Metric name="Upcoming shifts" value={upcoming.length}/>
