@@ -8,6 +8,7 @@ import {
   CalendarDays,
   CreditCard,
   ClipboardList,
+  ScanLine,
   Home,
   LogOut,
   MessageCircle,
@@ -21,6 +22,7 @@ const supabase = createClient()
 const navItems = [
   { label: "Home", icon: Home, href: "/coach", activePath: "/coach" },
   { label: "Schedule", icon: CalendarDays, href: "/coach/schedule", activePath: "/coach/schedule" },
+  { label: "Scan QR", icon: ScanLine, href: "/coach/scan-qr", activePath: "/coach/scan-qr" },
   { label: "Activity", icon: ClipboardList, href: "/coach/activity", activePath: "/coach/activity" },
   { label: "Payments", icon: CreditCard, href: "/coach/payments", activePath: "/coach/payments" },
   { label: "Profile", icon: UserIcon, href: "/coach/profile", activePath: "/coach/profile" },
@@ -119,7 +121,7 @@ export default function CoachPersistentShell({ children }: Props) {
           className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#07101f]/95 px-2 pt-2 backdrop-blur-xl lg:hidden"
           style={{ paddingBottom: "max(env(safe-area-inset-bottom), 10px)" }}
         >
-          <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
+          <div className="mx-auto grid max-w-lg grid-cols-6 gap-1">
             {navItems.map((item) => {
               const Icon = item.icon
               const active = activePath === item.href || activePath.startsWith(item.href + "/")
@@ -131,7 +133,7 @@ export default function CoachPersistentShell({ children }: Props) {
                   onPointerEnter={()=>router.prefetch(item.href)}
                   onFocus={()=>router.prefetch(item.href)}
                   onTouchStart={()=>router.prefetch(item.href)}
-                  className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-semibold transition ${
+                  className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-semibold transition ${
                     active ? "bg-[#ff7a1a] text-white" : "text-white/55 active:bg-white/10 active:text-white"
                   }`}
                 >
