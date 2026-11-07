@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 import CoachHomeClient from "../CoachHomeClient"
 import CoachQrPage from "../CoachQrPage"
 
-const sections = ["schedule","scan-qr","activity","payments","profile"] as const
+const sections = ["schedule","scan-qr","payments","profile"] as const
 type Section = typeof sections[number]
 
 export default async function CoachSectionPage({
@@ -21,5 +21,5 @@ export default async function CoachSectionPage({
   const {data:coach}=await supabase.from("coaches")
     .select("id,display_name,branch,username,is_active").eq("user_id",user.id).maybeSingle()
   if(section==="scan-qr") return <CoachQrPage/>
-  return <CoachHomeClient coach={coach||null} tab={section as "schedule"|"activity"|"payments"|"profile"}/>
+  return <CoachHomeClient coach={coach||null} tab={section as "schedule"|"payments"|"profile"}/>
 }

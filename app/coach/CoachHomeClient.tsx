@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { parseGuestCode } from "@/lib/guest-qr"
 import CoachDashboardMemberLayout from "./CoachDashboardMemberLayout"
+import CoachActivityPanel from "./CoachActivityPanel"
 import { CalendarDays, CheckCircle2, Clock3, ClipboardCheck, LogOut, QrCode, ShieldCheck, RefreshCw, LockKeyhole } from "lucide-react"
 
 const supabase = createClient()
@@ -29,7 +30,7 @@ function normalizeCode(raw:string) {
   if(direct) return direct[0].toUpperCase()
   try { const u=new URL(raw);return u.searchParams.get("member")?.match(/\bM\d{3,}\b/i)?.[0]?.toUpperCase()??"" } catch { return "" }
 }
-type CoachTab = "home" | "schedule" | "activity" | "payments" | "profile"
+type CoachTab = "home" | "schedule" | "payments" | "profile"
 export default function CoachHomeClient({coach,tab="home"}:{coach:Coach|null;tab?:CoachTab}) {
   const [data,setData]=useState<Dashboard|null>(null)
   const [loading,setLoading]=useState(true)
@@ -255,13 +256,9 @@ export default function CoachHomeClient({coach,tab="home"}:{coach:Coach|null;tab
           </div>}
           <p className="mt-3 text-xs text-amber-200">A visitor-only pass is NOT gym or training authorization. Monthly free guest passes allow gym-only access, require an accompanying member, and cannot be used for personal training. Admin alone approves trials, X-deals and payments.</p>
         </section>
+        <CoachActivityPanel/>
         </>}
-        {tab==="activity"&&<section className={card}>
-          <h2 className="flex items-center gap-2 text-lg font-bold"><ClipboardCheck size={19} className="text-[#ff7a1a]"/> My conductions</h2>
-          <p className="mt-2 text-sm text-white/50">Verified member-level conduction records appear here once the integration is enabled; an empty list does not mean you were absent.</p>
-          {conductions.length===0?<p className="mt-4 text-sm text-white/55">No verified conduction records yet.</p>:
-          <div className="mt-4 space-y-2">{conductions.map(c=><div key={c.id} className="flex justify-between gap-3 border-b border-white/10 py-2 text-sm"><span>{c.session_date} · {c.member_name}</span><span>{c.status}</span></div>)}</div>}
-        </section>}
+
       </>}
       {tab==="profile"&&<section className={card}>
         <h2 className="flex items-center gap-2 text-lg font-bold"><LockKeyhole size={18} className="text-[#ff7a1a]"/> Change password</h2>
