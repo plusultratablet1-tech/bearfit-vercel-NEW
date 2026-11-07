@@ -1,5 +1,6 @@
 "use client"
 import {BRANCH_IDS} from "@/lib/branches"
+import CoachGpsAdminSettings from "./CoachGpsAdminSettings"
 
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react"
@@ -384,7 +385,8 @@ export default function CoachAttendanceAdminClient() {
           </>}
         </section>
 
-        <details className={card+" group"} id="coach-attendance-management">
+        <CoachGpsAdminSettings/>
+         <details className={card+" group"} id="coach-attendance-management">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
             <span className="flex items-center gap-2 font-bold"><Settings2 size={18} className="text-[#ff7a1a]"/> Shift planning &amp; reception tools</span>
             <ChevronDown size={18} className="text-white/60 transition-transform group-open:rotate-180"/>
