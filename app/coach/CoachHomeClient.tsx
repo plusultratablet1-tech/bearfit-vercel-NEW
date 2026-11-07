@@ -165,7 +165,7 @@ export default function CoachHomeClient({coach,tab="home"}:{coach:Coach|null;tab
       {notice&&<p role="status" className="rounded-xl border border-green-400/20 bg-green-400/10 p-4 text-sm text-green-200">{notice}</p>}
       {(!coach||!coach.is_active)&&<p className="rounded-xl border border-amber-400/25 bg-amber-400/10 p-4">Your coach account is not linked or is inactive. Ask Admin for help.</p>}
       {tab==="home"&&data&&coach&&<CoachDashboardMemberLayout coach={coach} bookings={data.bookings||[]} conductions={data.conductions||[]} shifts={data.shifts||[]}/>}
-      {tab==="payments"&&<CoachPaymentsDashboard/>}}
+      {tab==="payments"&&<CoachPaymentsDashboard/>}
       {loading?<p className={card}>Loading your schedule…</p>:data&&<>
         {tab==="home"&&<div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <Metric name="Upcoming shifts" value={upcoming.length}/>
