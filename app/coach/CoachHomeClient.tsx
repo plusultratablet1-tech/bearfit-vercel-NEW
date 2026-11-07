@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client"
 import { parseGuestCode } from "@/lib/guest-qr"
 import CoachDashboardMemberLayout from "./CoachDashboardMemberLayout"
 import CoachActivityPanel from "./CoachActivityPanel"
+import CoachScheduleOverview from "./CoachScheduleOverview"
 import { CalendarDays, CheckCircle2, Clock3, ClipboardCheck, LogOut, QrCode, ShieldCheck, RefreshCw, LockKeyhole } from "lucide-react"
 
 const supabase = createClient()
@@ -171,7 +172,7 @@ export default function CoachHomeClient({coach,tab="home"}:{coach:Coach|null;tab
           <Metric name="Approved conductions (31d)" value={conductions.filter(c=>c.status==="approved").length}/>
           <Metric name="Pending review" value={conductions.filter(c=>c.status==="pending").length}/>
         </div>}
-        {tab==="schedule"&&<><section className={card}>
+        {tab==="schedule"&&<><CoachScheduleOverview shifts={data.shifts||[]} onRefresh={refresh}/><details className="rounded-[24px] border border-white/10 bg-[#121212] p-4 md:p-6"><summary className="cursor-pointer text-lg font-bold text-orange-300">Shift confirmation, verified attendance & guest operations</summary><div className="mt-5 space-y-5"><section className={card}>
           <h2 className="flex items-center gap-2 text-lg font-bold"><CalendarDays size={19} className="text-[#ff7a1a]"/> Shift confirmation</h2>
           <p className="mt-2 text-sm text-white/50">Confirm by 8:00 PM Philippine time on the day before each scheduled shift. No reply is flagged as unconfirmed, not automatically absent.</p>
           <div className="mt-4 space-y-3">
@@ -256,6 +257,7 @@ export default function CoachHomeClient({coach,tab="home"}:{coach:Coach|null;tab
           </div>}
           <p className="mt-3 text-xs text-amber-200">A visitor-only pass is NOT gym or training authorization. Monthly free guest passes allow gym-only access, require an accompanying member, and cannot be used for personal training. Admin alone approves trials, X-deals and payments.</p>
         </section>
+        </div></details>
         <CoachActivityPanel/>
         </>}
 
