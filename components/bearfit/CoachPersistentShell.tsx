@@ -122,7 +122,7 @@ export default function CoachPersistentShell({ children }: Props) {
           <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
             {navItems.map((item) => {
               const Icon = item.icon
-              const active = activePath === item.href || activePath.startsWith(item.href + "/")
+              const active = item.href === "/coach" ? activePath === "/coach" : activePath === item.href || activePath.startsWith(item.href + "/")
               return (
                 <Link
                   key={item.label}
