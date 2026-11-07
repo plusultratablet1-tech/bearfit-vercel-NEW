@@ -1,8 +1,9 @@
 import { notFound, redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import CoachHomeClient from "../CoachHomeClient"
+import CoachQrPage from "../CoachQrPage"
 
-const sections = ["schedule","activity","payments","profile"] as const
+const sections = ["schedule","scan-qr","activity","payments","profile"] as const
 type Section = typeof sections[number]
 
 export default async function CoachSectionPage({
@@ -19,5 +20,6 @@ export default async function CoachSectionPage({
   if (profile?.role!=="coach") redirect("/launch")
   const {data:coach}=await supabase.from("coaches")
     .select("id,display_name,branch,username,is_active").eq("user_id",user.id).maybeSingle()
-  return <CoachHomeClient coach={coach||null} tab={section as Section}/>
+  if(section==="scan-qr") return <CoachQrPage/>
+  return <CoachHomeClient coach={coach||null} tab={section as "schedule"|"activity"|"payments"|"profile"}/>
 }
