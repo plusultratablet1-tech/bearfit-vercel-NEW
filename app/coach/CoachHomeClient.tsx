@@ -101,12 +101,11 @@ export default function CoachHomeClient({coach,tab="home"}:{coach:Coach|null;tab
     else {setNotice(result.late?"Response recorded after the 8 PM deadline. Admin will see it as late.":"Response saved and visible to Admin.");await refresh()}
     setBusy(null)
   }
-  async function punch(shiftId:string,action:"in"|"out",code:string):Promise<boolean> {
-    if(!/^[a-f0-9]{12}$/i.test(code.trim())){setError("Ask reception for the current 12-character branch attendance code.");return false}
+  async function punch(shiftId:string,action:"in"|"out",fix:{latitude:number;longitude:number;accuracy:number;observedAt:string}):Promise<boolean>{
     setBusy(shiftId+":punch");setError("");setNotice("")
-    const {error:e}=await supabase.rpc("coach_verified_time_punch",{p_work_shift_id:shiftId,p_code:code.trim().toUpperCase(),p_action:action})
+    const {error:e}=await supabase.rpc("coach_gps_time_punch",{p_work_shift_id:shiftId,p_action:action,p_latitude:fix.latitude,p_longitude:fix.longitude,p_accuracy_m:fix.accuracy,p_observed_at:fix.observedAt})
     if(e)setError(e.message)
-    else {setNotice(action==="in"?"Verified clock-in recorded. Admin can see your arrival.":"Verified clock-out recorded. Admin can see your departure.");setBranchCode("");await refresh()}
+    else{setNotice(action==="in"?"GPS verified: clock-in recorded.":"GPS verified: clock-out recorded.");await refresh()}
     setBusy(null)
     return !e
   }
@@ -207,8 +206,8 @@ export default function CoachHomeClient({coach,tab="home"}:{coach:Coach|null;tab
             {upcoming.map(s=><div key={s.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 p-3">
               <div><p className="font-medium">{format(s.starts_at)}</p>
                 <p className="text-xs text-white/50">Time in: {s.clock_in_at?format(s.clock_in_at):"Not yet"} · Time out: {s.clock_out_at?format(s.clock_out_at):"Not yet"}</p></div>
-              {s.clock_in_at&&!s.clock_out_at?<button disabled={busy!==null} className={btn} onClick={()=>void punch(s.id,"out",branchCode)}>Clock out</button>:
-                !s.clock_in_at?<button disabled={busy!==null} className={btn} onClick={()=>void punch(s.id,"in",branchCode)}>Clock in</button>:<span className="text-sm text-emerald-300">Shift completed</span>}
+              {s.clock_in_at&&!s.clock_out_at?<button disabled={busy!==null} className={btn} onClick={()=>setError("Use the verified GPS Clock Out button at the top of Schedule.")}>Clock out</button>:
+                !s.clock_in_at?<button disabled={busy!==null} className={btn} onClick={()=>setError("Use the verified GPS Clock In button at the top of Schedule.")}>Clock in</button>:<span className="text-sm text-emerald-300">Shift completed</span>}
             </div>)}
           </div>
         </section>
