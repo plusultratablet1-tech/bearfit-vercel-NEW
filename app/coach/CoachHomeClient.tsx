@@ -101,13 +101,14 @@ export default function CoachHomeClient({coach,tab="home"}:{coach:Coach|null;tab
     else {setNotice(result.late?"Response recorded after the 8 PM deadline. Admin will see it as late.":"Response saved and visible to Admin.");await refresh()}
     setBusy(null)
   }
-  async function punch(shiftId:string,action:"in"|"out") {
-    if(!/^[a-f0-9]{12}$/i.test(branchCode.trim())){setError("Ask reception for the current 12-character branch attendance code.");return}
+  async function punch(shiftId:string,action:"in"|"out",code:string):Promise<boolean> {
+    if(!/^[a-f0-9]{12}$/i.test(code.trim())){setError("Ask reception for the current 12-character branch attendance code.");return false}
     setBusy(shiftId+":punch");setError("");setNotice("")
-    const {error:e}=await supabase.rpc("coach_verified_time_punch",{p_work_shift_id:shiftId,p_code:branchCode.trim().toUpperCase(),p_action:action})
+    const {error:e}=await supabase.rpc("coach_verified_time_punch",{p_work_shift_id:shiftId,p_code:code.trim().toUpperCase(),p_action:action})
     if(e)setError(e.message)
     else {setNotice(action==="in"?"Verified clock-in recorded. Admin can see your arrival.":"Verified clock-out recorded. Admin can see your departure.");setBranchCode("");await refresh()}
     setBusy(null)
+    return !e
   }
   async function verifyGuest(redeem:boolean){
     const token=parseGuestCode(guestCode)
@@ -173,7 +174,7 @@ export default function CoachHomeClient({coach,tab="home"}:{coach:Coach|null;tab
           <Metric name="Approved conductions (31d)" value={conductions.filter(c=>c.status==="approved").length}/>
           <Metric name="Pending review" value={conductions.filter(c=>c.status==="pending").length}/>
         </div>}
-        {tab==="schedule"&&<><CoachScheduleOverview shifts={data.shifts||[]} onRefresh={refresh} onPunch={punch} attendanceCode={branchCode} onAttendanceCodeChange={setBranchCode} punchBusy={busy!==null}/><details className="rounded-[24px] border border-white/10 bg-[#121212] p-4 md:p-6"><summary className="cursor-pointer text-lg font-bold text-orange-300">Shift confirmation, verified attendance & guest operations</summary><div className="mt-5 space-y-5"><section className={card}>
+        {tab==="schedule"&&<><CoachScheduleOverview shifts={data.shifts||[]} onRefresh={refresh} onPunch={punch} punchBusy={busy!==null}/><details className="rounded-[24px] border border-white/10 bg-[#121212] p-4 md:p-6"><summary className="cursor-pointer text-lg font-bold text-orange-300">Shift confirmation, verified attendance & guest operations</summary><div className="mt-5 space-y-5"><section className={card}>
           <h2 className="flex items-center gap-2 text-lg font-bold"><CalendarDays size={19} className="text-[#ff7a1a]"/> Shift confirmation</h2>
           <p className="mt-2 text-sm text-white/50">Confirm by 8:00 PM Philippine time on the day before each scheduled shift. No reply is flagged as unconfirmed, not automatically absent.</p>
           <div className="mt-4 space-y-3">
@@ -206,8 +207,8 @@ export default function CoachHomeClient({coach,tab="home"}:{coach:Coach|null;tab
             {upcoming.map(s=><div key={s.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 p-3">
               <div><p className="font-medium">{format(s.starts_at)}</p>
                 <p className="text-xs text-white/50">Time in: {s.clock_in_at?format(s.clock_in_at):"Not yet"} · Time out: {s.clock_out_at?format(s.clock_out_at):"Not yet"}</p></div>
-              {s.clock_in_at&&!s.clock_out_at?<button disabled={busy!==null} className={btn} onClick={()=>void punch(s.id,"out")}>Clock out</button>:
-                !s.clock_in_at?<button disabled={busy!==null} className={btn} onClick={()=>void punch(s.id,"in")}>Clock in</button>:<span className="text-sm text-emerald-300">Shift completed</span>}
+              {s.clock_in_at&&!s.clock_out_at?<button disabled={busy!==null} className={btn} onClick={()=>void punch(s.id,"out",branchCode)}>Clock out</button>:
+                !s.clock_in_at?<button disabled={busy!==null} className={btn} onClick={()=>void punch(s.id,"in",branchCode)}>Clock in</button>:<span className="text-sm text-emerald-300">Shift completed</span>}
             </div>)}
           </div>
         </section>
