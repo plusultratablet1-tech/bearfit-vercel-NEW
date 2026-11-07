@@ -8,10 +8,32 @@ type Overview={bookings:Booking[];requests:Request[]}
 type Shift={id:string;starts_at:string;ends_at:string;response:string;clock_in_at:string|null;clock_out_at:string|null}
 const db=createClient()
 const box="rounded-[24px] border border-white/10 bg-[#171717] p-5 md:p-6"
-const ph=(s:string)=>new Intl.DateTimeFormat("en-PH",{timeZone:"Asia/Manila",dateStyle:"medium",timeStyle:"short"}).format(new Date(s))
-function localDay(s:string){const p=new Intl.DateTimeFormat("en-US",{timeZone:"Asia/Manila",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date(s));const v=(x:string)=>p.find(a=>a.type===x)?.value||"";return v("year")+"-"+v("month")+"-"+v("day")}
-function addDays(s:string,n:number){const d=new Date(s+"T12:00:00Z");d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)}
-function monday(s:string){const d=new Date(s+"T12:00:00Z");const dow=d.getUTCDay();return addDays(s,-((dow+6)%7))}
+// Schedule dates may be absent on unconfirmed Admin booking requests.
+ // Never pass an invalid Date to Intl: its RangeError previously crashed this tab.
+const ph=(s:string|null|undefined)=>{
+ if(!s)return "—"
+ const value=new Date(s)
+ return Number.isNaN(value.getTime())?"—":new Intl.DateTimeFormat("en-PH",{timeZone:"Asia/Manila",dateStyle:"medium",timeStyle:"short"}).format(value)
+}
+function localDay(s:string|null|undefined){
+ if(!s)return ""
+ const value=new Date(s)
+ if(Number.isNaN(value.getTime()))return ""
+ const p=new Intl.DateTimeFormat("en-US",{timeZone:"Asia/Manila",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(value)
+ const v=(x:string)=>p.find(a=>a.type===x)?.value||""
+ return v("year")+"-"+v("month")+"-"+v("day")
+}
+function addDays(s:string,n:number){
+ const d=new Date(s+"T12:00:00Z")
+ if(Number.isNaN(d.getTime()))return s
+ d.setUTCDate(d.getUTCDate()+n)
+ return d.toISOString().slice(0,10)
+}
+function monday(s:string){const d=new Date(s+"T12:00:00Z");const dow=d.getUTCDay();return Number.isNaN(d.getTime())?s:addDays(s,-((dow+6)%7))}
+function calendarLabel(s:string){
+ const value=new Date(s+"T12:00:00Z")
+ return Number.isNaN(value.getTime())?"—":new Intl.DateTimeFormat("en-PH",{timeZone:"Asia/Manila",month:"short",day:"numeric",year:"numeric"}).format(value)
+}
 export default function CoachScheduleOverview({shifts,onRefresh}:{shifts:Shift[];onRefresh:()=>Promise<void>}){
  const [data,setData]=useState<Overview>({bookings:[],requests:[]}),[loading,setLoading]=useState(true),[error,setError]=useState(""),[notice,setNotice]=useState(""),[busy,setBusy]=useState<string|null>(null),[reason,setReason]=useState<Record<string,string>>({}),[week,setWeek]=useState(()=>monday(localDay(new Date().toISOString()))),[selected,setSelected]=useState(()=>localDay(new Date().toISOString()))
  async function load(){const r=await db.rpc("coach_schedule_overview");if(r.error)setError(r.error.message);else{setData(r.data as Overview);setError("")}setLoading(false)}
@@ -25,7 +47,7 @@ export default function CoachScheduleOverview({shifts,onRefresh}:{shifts:Shift[]
  const days=Array.from({length:7},(_,i)=>addDays(week,i))
  const dayList=bookings.filter(b=>localDay(b.start_at)===selected)
  const shiftList=shifts.filter(s=>localDay(s.starts_at)===selected)
- const start=ph(week+"T12:00:00+08").split(",")[0],end=ph(addDays(week,6)+"T12:00:00+08").split(",")[0]
+ const start=calendarLabel(week),end=calendarLabel(addDays(week,6))
  async function respond(id:string,response:"available"|"conflict"|"cancel_requested"){setBusy(id);setError("");setNotice("");const r=await db.rpc("coach_schedule_respond",{p_booking_id:id,p_response:response,p_reason:reason[id]||null});setBusy(null);if(r.error)setError(r.error.message);else{setNotice("Response saved for Admin review. Official booking status unchanged.");await load();await onRefresh()}}
  return <div className="space-y-5">
  <div className="border-b border-white/10 pb-5"><p className="text-xs font-black uppercase tracking-[.22em] text-orange-300">Coach Operations · Admin-connected</p><h1 className="mt-2 text-3xl font-black">My Schedule</h1><p className="mt-2 text-sm text-white/50">Assigned by BearFit Admin · Philippines time</p></div>
