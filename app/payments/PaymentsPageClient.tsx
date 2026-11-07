@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react"
 import StaffAppShell from "@/components/bearfit/StaffAppShell"
+import CoachPaymentsAdminInbox from "./CoachPaymentsAdminInbox"
 import { createClient } from "@/lib/supabase/client"
 
 const supabase = createClient()
@@ -582,6 +583,7 @@ export default function PaymentsPageClient({
             </div>
           </div>
         </section>
+        {role==="admin"&&<CoachPaymentsAdminInbox/>}
       </div>
     </StaffAppShell>
   )
