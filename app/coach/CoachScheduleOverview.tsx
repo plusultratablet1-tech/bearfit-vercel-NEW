@@ -34,8 +34,12 @@ function calendarLabel(s:string){
  const value=new Date(s+"T12:00:00Z")
  return Number.isNaN(value.getTime())?"—":new Intl.DateTimeFormat("en-PH",{timeZone:"Asia/Manila",month:"short",day:"numeric",year:"numeric"}).format(value)
 }
-export default function CoachScheduleOverview({shifts,onRefresh,onPunch,attendanceCode,onAttendanceCodeChange,punchBusy}:{shifts:Shift[];onRefresh:()=>Promise<void>;onPunch:(id:string,action:"in"|"out")=>Promise<void>;attendanceCode:string;onAttendanceCodeChange:(v:string)=>void;punchBusy:boolean}){
+export default function CoachScheduleOverview({shifts,onRefresh,onPunch,punchBusy}:{shifts:Shift[];onRefresh:()=>Promise<void>;onPunch:(id:string,action:"in"|"out",code:string)=>Promise<boolean>;punchBusy:boolean}){
  const [data,setData]=useState<Overview>({bookings:[],requests:[]}),[loading,setLoading]=useState(true),[error,setError]=useState(""),[notice,setNotice]=useState(""),[busy,setBusy]=useState<string|null>(null),[reason,setReason]=useState<Record<string,string>>({}),[week,setWeek]=useState(()=>monday(localDay(new Date().toISOString()))),[selected,setSelected]=useState(()=>localDay(new Date().toISOString()))
+ const [clockDialog,setClockDialog]=useState<{shiftId:string;action:"in"|"out"}|null>(null)
+ const [clockCode,setClockCode]=useState("")
+ const [clockError,setClockError]=useState("")
+ const [clockSubmitting,setClockSubmitting]=useState(false)
  async function load(){const r=await db.rpc("coach_schedule_overview");if(r.error)setError(r.error.message);else{setData(r.data as Overview);setError("")}setLoading(false)}
  useEffect(()=>{void load()},[])
  const today=localDay(new Date().toISOString())
@@ -47,13 +51,48 @@ export default function CoachScheduleOverview({shifts,onRefresh,onPunch,attendan
  const days=Array.from({length:7},(_,i)=>addDays(week,i))
  const dayList=bookings.filter(b=>localDay(b.start_at)===selected)
  const shiftList=shifts.filter(s=>localDay(s.starts_at)===selected)
+ const currentShift=shifts.find(v=>v.clock_in_at&&!v.clock_out_at)
+  || shifts.find(v=>localDay(v.starts_at)===today&&v.clock_out_at)
+  || shifts.find(v=>localDay(v.starts_at)===today)
+ const clockAction=currentShift?.clock_in_at?"out":"in"
+ const clockTime=(timestamp:string|null|undefined)=>{
+   if(!timestamp)return ""
+   const value=new Date(timestamp)
+   return Number.isNaN(value.getTime())?"—":new Intl.DateTimeFormat("en-PH",{timeZone:"Asia/Manila",hour:"numeric",minute:"2-digit",hour12:true}).format(value)
+ }
+ function openClockDialog(){
+   if(!currentShift||currentShift.clock_out_at||punchBusy)return
+   setClockCode("")
+   setClockError("")
+   setClockDialog({shiftId:currentShift.id,action:clockAction})
+ }
+ async function submitClock(event:React.FormEvent<HTMLFormElement>){
+   event.preventDefault()
+   if(!clockDialog||clockSubmitting)return
+   const verified=clockCode.trim().toUpperCase()
+   if(!/^[0-9A-F]{12}$/.test(verified)){setClockError("Enter reception's current 12-character attendance code.");return}
+   setClockSubmitting(true);setClockError("")
+   const ok=await onPunch(clockDialog.shiftId,clockDialog.action,verified)
+   setClockSubmitting(false)
+   if(ok){setClockDialog(null);setClockCode("")}
+   else setClockError("Unable to verify this punch. Check the code or assigned shift.")
+ }
  const start=calendarLabel(week),end=calendarLabel(addDays(week,6))
  async function respond(id:string,response:"available"|"conflict"|"cancel_requested"){setBusy(id);setError("");setNotice("");const r=await db.rpc("coach_schedule_respond",{p_booking_id:id,p_response:response,p_reason:reason[id]||null});setBusy(null);if(r.error)setError(r.error.message);else{setNotice("Response saved for Admin review. Official booking status unchanged.");await load();await onRefresh()}}
  return <div className="space-y-5">
  <div className="flex flex-col gap-4 border-b border-white/10 pb-5 xl:flex-row xl:items-start xl:justify-between">
  <div><p className="text-xs font-black uppercase tracking-[.22em] text-orange-300">Coach Operations · Admin-connected</p><h1 className="mt-2 text-3xl font-black">My Schedule</h1><p className="mt-2 text-sm text-white/50">Assigned by BearFit Admin · Philippines time</p></div>
- <div className="w-full rounded-[20px] border border-orange-500/20 bg-[#171717] p-4 xl:w-[355px]"><p className="text-sm font-black">Verified Clock In / Clock Out</p><p className="mt-1 text-xs text-white/50">Enter reception's current 12-character code. No manual/unverified punches.</p><input aria-label="Reception attendance code" placeholder="12-character branch code" maxLength={12} value={attendanceCode} onChange={e=>onAttendanceCodeChange(e.target.value.toUpperCase().slice(0,12))} className="mt-3 w-full rounded-xl border border-white/15 bg-[#242424] px-3 py-2 font-mono text-sm uppercase tracking-widest"/>
- <div className="mt-3 flex flex-wrap gap-2">{shifts.filter(v=>localDay(v.starts_at)===localDay(new Date().toISOString())||Boolean(v.clock_in_at&&!v.clock_out_at)).map(v=><div key={v.id} className="flex flex-wrap items-center gap-2"><span className="text-xs text-white/55">{v.clock_in_at&&!v.clock_out_at?"On duty":v.clock_out_at?"Completed shift":"Assigned shift"}</span><button type="button" disabled={punchBusy||v.clock_out_at!==null||attendanceCode.trim().length!==12} onClick={()=>void onPunch(v.id,v.clock_in_at?"out":"in")} className="rounded-lg bg-orange-500 px-3 py-2 text-xs font-bold disabled:opacity-40">{v.clock_in_at?"Clock Out":"Clock In"}</button></div>)}</div>{!shifts.some(v=>localDay(v.starts_at)===localDay(new Date().toISOString())||Boolean(v.clock_in_at&&!v.clock_out_at))&&<p className="mt-2 text-xs text-amber-200">No active or assigned shift today. Ask Admin to assign one.</p>}</div>
+ <div className="flex shrink-0 flex-col items-start gap-1.5 xl:items-end">
+  {currentShift?.clock_in_at&&<span className="text-xs font-medium text-emerald-300">Clocked in: {clockTime(currentShift.clock_in_at)}</span>}
+  {currentShift?.clock_out_at&&<span className="text-xs font-medium text-white/55">Clocked out: {clockTime(currentShift.clock_out_at)}</span>}
+  {currentShift?.clock_out_at
+   ?<span className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-5 py-3 text-sm font-bold text-emerald-300">Shift completed</span>
+   :<button type="button" onClick={openClockDialog} disabled={!currentShift||punchBusy}
+       title={!currentShift?"Admin must assign a shift before you can clock in.":undefined}
+       className="rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-orange-950/20 disabled:cursor-not-allowed disabled:opacity-40">
+        {currentShift?.clock_in_at?"Clock Out":"Clock In"}
+     </button>}
+ </div>
  </div>
  {error&&<p role="alert" className="rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-200">{error}</p>}
  {notice&&<p role="status" className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-4 text-sm text-emerald-200">{notice}</p>}
@@ -65,5 +104,23 @@ export default function CoachScheduleOverview({shifts,onRefresh,onPunch,attendan
   <section className="mt-7"><h2 className="text-xl font-black">Today's Client Sessions</h2><p className="mt-1 text-sm text-white/50">Assigned bookings from Admin. Session deduction stays in Scan QR.</p><div className="mt-4 grid gap-3 md:grid-cols-2">{todays.length?todays.map(b=><div key={b.id} className="rounded-[20px] bg-[#242424] p-5"><p className="font-black">{b.member_name}</p><p className="mt-1 text-sm text-orange-300">{b.member_code} · {b.session_label||b.session_type}</p><p className="mt-2 text-xs text-white/55">{ph(b.start_at)} · {b.status}</p>{b.coach_response&&<p className="mt-2 text-xs text-emerald-300">Your response: {b.coach_response}</p>}<div className="mt-3 flex flex-wrap gap-2"><button disabled={busy!==null||b.status!=="confirmed"} onClick={()=>void respond(b.id,"available")} className="rounded-lg bg-orange-500 px-3 py-2 text-xs font-bold disabled:opacity-40">I'm available</button><button disabled={busy!==null||b.status!=="confirmed"} onClick={()=>void respond(b.id,"cancel_requested")} className="rounded-lg border border-white/20 px-3 py-2 text-xs disabled:opacity-40">Request cancellation</button></div><input aria-label={"Reason for "+b.member_name} placeholder="Reason for conflict/cancellation" maxLength={300} value={reason[b.id]||""} onChange={e=>setReason(v=>({...v,[b.id]:e.target.value}))} className="mt-3 w-full rounded-lg border border-white/10 bg-[#161616] px-3 py-2 text-sm"/></div>):<p className="rounded-xl bg-[#242424] p-5 text-sm text-white/55 md:col-span-2">No confirmed client sessions assigned today.</p>}</div></section>
   <section className="mt-7 rounded-[24px] bg-[#171717] p-5"><h2 className="text-xl font-black">Session Requests</h2><p className="mt-1 text-sm text-white/50">Member requests addressed to you, awaiting Admin confirmation.</p>{requests.length===0?<p className="mt-4 text-sm text-white/50">No pending requests for this coach.</p>:requests.map(r=><div key={r.id} className="mt-4 rounded-xl border border-white/10 bg-[#242424] p-4"><p className="font-bold">{r.member_name} · {r.member_code}</p><p className="mt-1 text-xs text-white/55">{ph(r.start_at)} · {r.session_label||r.session_type}</p>{r.coach_response&&<p className="mt-1 text-xs text-orange-300">Your response: {r.coach_response}</p>}<input aria-label={"Conflict reason for "+r.member_name} placeholder="Reason if unavailable" value={reason[r.id]||""} onChange={e=>setReason(v=>({...v,[r.id]:e.target.value}))} className="mt-3 w-full rounded-lg bg-[#161616] p-2 text-sm"/><div className="mt-3 flex flex-wrap gap-2"><button disabled={busy!==null} onClick={()=>void respond(r.id,"available")} className="rounded-lg bg-orange-500 px-3 py-2 text-xs font-bold">Available</button><button disabled={busy!==null} onClick={()=>void respond(r.id,"conflict")} className="rounded-lg border border-white/20 px-3 py-2 text-xs">Report conflict</button></div></div>)}</section>
  </section>
+ {clockDialog&&<div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/75 p-4" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget&&!clockSubmitting)setClockDialog(null)}}>
+  <div role="dialog" aria-modal="true" aria-labelledby="coach-clock-dialog-title" className="w-full max-w-sm rounded-[24px] border border-white/15 bg-[#171717] p-6 shadow-2xl">
+    <h2 id="coach-clock-dialog-title" className="text-xl font-black">{clockDialog.action==="in"?"Clock In":"Clock Out"}</h2>
+    <p className="mt-2 text-sm text-white/55">Enter the current 12-character code from reception to record a verified {clockDialog.action==="in"?"clock-in":"clock-out"}.</p>
+    <form onSubmit={e=>void submitClock(e)} className="mt-4">
+      <label htmlFor="coach-clock-code" className="block text-xs font-semibold text-white/60">Reception attendance code</label>
+      <input id="coach-clock-code" type="text" inputMode="text" autoCapitalize="characters" autoComplete="off"
+        autoFocus value={clockCode} maxLength={12}
+        onChange={e=>{setClockCode(e.target.value.toUpperCase().replace(/[^0-9A-F]/g,"").slice(0,12));setClockError("")}}
+        placeholder="12-character code" className="mt-2 w-full rounded-xl border border-white/20 bg-[#242424] px-4 py-3 font-mono text-sm uppercase tracking-widest"/>
+      {clockError&&<p role="alert" className="mt-3 text-sm text-red-300">{clockError}</p>}
+      <div className="mt-5 flex gap-2">
+        <button disabled={clockSubmitting||clockCode.length!==12||punchBusy} type="submit" className="flex-1 rounded-xl bg-orange-500 px-4 py-3 text-sm font-bold disabled:opacity-40">{clockSubmitting?"Verifying…":clockDialog.action==="in"?"Confirm Clock In":"Confirm Clock Out"}</button>
+        <button type="button" disabled={clockSubmitting} onClick={()=>{setClockDialog(null);setClockCode("");setClockError("")}} className="rounded-xl border border-white/15 px-4 py-3 text-sm disabled:opacity-40">Cancel</button>
+      </div>
+    </form>
+  </div>
+ </div>}
  </div>
 }
