@@ -1,0 +1,24 @@
+"use client"
+import {useEffect,useState} from "react"
+import {createClient} from "@/lib/supabase/client"
+const db=createClient()
+type Report={id:string;coach_name:string;member_code:string;member_name:string;sender:string;amount:number;channel:string;reference:string|null;notes:string|null;status:string;created_at:string}
+type Payable={id:string;member_code:string;member_name:string;label:string;amount_due:number;due_at:string|null}
+type Inbox={reports:Report[];payables:Payable[]}
+const money=(a:number)=>new Intl.NumberFormat("en-PH",{style:"currency",currency:"PHP"}).format(a)
+export default function CoachPaymentsAdminInbox(){
+ const [data,setData]=useState<Inbox|null>(null),[error,setError]=useState(""),[notice,setNotice]=useState(""),[busy,setBusy]=useState(false)
+ const [member,setMember]=useState(""),[amount,setAmount]=useState(""),[label,setLabel]=useState(""),[due,setDue]=useState("")
+ async function load(){const r=await db.rpc("admin_coach_payment_inbox");if(r.error)setError(r.error.message);else{setData(r.data as Inbox);setError("")}}
+ useEffect(()=>{void load()},[])
+ async function review(id:string,status:"reviewed"|"rejected"){setBusy(true);const r=await db.rpc("admin_review_coach_transfer",{p_report_id:id,p_status:status});setBusy(false);if(r.error)setError(r.error.message);else{setNotice("Report "+status+". Enter any verified payment separately using the Admin payment form.");await load()}}
+ async function add(e:React.FormEvent){e.preventDefault();setBusy(true);const r=await db.rpc("admin_record_client_payable",{p_member_code:member,p_amount:Number(amount),p_label:label,p_due_at:due?new Date(due+"T12:00:00+08:00").toISOString():null});setBusy(false);if(r.error)setError(r.error.message);else{setNotice("Payable recorded. Coach will see the amount due.");setAmount("");setLabel("");setMember("");setDue("");await load()}}
+ async function close(id:string){setBusy(true);const r=await db.rpc("admin_close_client_payable",{p_id:id,p_status:"settled"});setBusy(false);if(r.error)setError(r.error.message);else{setNotice("Payable closed for tracking. Official payment records are unchanged.");await load()}}
+ return <section className="mt-6 rounded-[24px] border border-white/10 bg-[#141414] p-5 md:p-6">
+ <h2 className="text-xl font-black">Coach-Reported Transfers & Payables</h2><p className="mt-2 text-sm text-white/50">Admin review. Reported transfers do not automatically become verified payments.</p>
+ {error&&<p role="alert" className="mt-3 text-sm text-red-300">{error}</p>}{notice&&<p role="status" className="mt-3 text-sm text-emerald-300">{notice}</p>}
+ <div className="mt-4 space-y-3">{(data?.reports||[]).map(r=><div key={r.id} className="rounded-xl border border-white/10 bg-[#202020] p-4"><p className="font-bold">{r.coach_name}: {r.member_name} ({r.member_code})</p><p className="mt-1 text-sm text-white/70">Reported sender: {r.sender} · {money(r.amount)} · {r.channel}</p><p className="mt-1 text-xs text-white/55">Ref: {r.reference||"Not supplied"} · {r.status}</p>{r.notes&&<p className="mt-2 text-xs text-white/60">{r.notes}</p>}{r.status==="pending"&&<div className="mt-3 flex gap-2"><button disabled={busy} onClick={()=>void review(r.id,"reviewed")} className="rounded-lg bg-orange-500 px-3 py-2 text-xs font-bold">Reviewed</button><button disabled={busy} onClick={()=>void review(r.id,"rejected")} className="rounded-lg border border-white/20 px-3 py-2 text-xs">Reject report</button></div>}</div>)}{data?.reports.length===0&&<p className="text-sm text-white/50">No coach transfer reports yet.</p>}</div>
+ <h3 className="mt-7 text-lg font-bold">Admin-set Client Payables</h3><form onSubmit={e=>void add(e)} className="mt-3 grid gap-3 md:grid-cols-2"><input required placeholder="Member ID e.g. M0012" value={member} onChange={e=>setMember(e.target.value)} className="rounded-lg bg-[#242424] p-3 text-sm"/><input required placeholder="Amount in PHP" type="number" min=".01" step=".01" value={amount} onChange={e=>setAmount(e.target.value)} className="rounded-lg bg-[#242424] p-3 text-sm"/><input required placeholder="Payable reason / description" value={label} onChange={e=>setLabel(e.target.value)} className="rounded-lg bg-[#242424] p-3 text-sm"/><input type="date" value={due} onChange={e=>setDue(e.target.value)} className="rounded-lg bg-[#242424] p-3 text-sm"/><button disabled={busy} className="rounded-lg bg-orange-500 px-4 py-3 text-sm font-bold md:col-span-2">Add Payable</button></form>
+ <div className="mt-4 space-y-2">{(data?.payables||[]).map(a=><div key={a.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[#242424] p-3"><span className="text-sm">{a.member_name} ({a.member_code}) · {a.label}: <b>{money(a.amount_due)}</b></span><button disabled={busy} onClick={()=>void close(a.id)} className="rounded-lg border border-white/20 px-3 py-2 text-xs">Mark resolved</button></div>)}</div>
+ </section>
+}
