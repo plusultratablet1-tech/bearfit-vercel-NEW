@@ -58,7 +58,7 @@ export default function CoachHomeClient({coach,tab="home"}:{coach:Coach|null;tab
   }
   async function punch(shiftId:string,action:"in"|"out",fix:{latitude:number;longitude:number;accuracy:number;observedAt:string}):Promise<boolean>{
     setBusy(shiftId+":punch");setError("");setNotice("")
-    const {error:e}=await supabase.rpc("coach_gps_time_punch",{p_work_shift_id:shiftId,p_action:action,p_latitude:fix.latitude,p_longitude:fix.longitude,p_accuracy_m:fix.accuracy,p_observed_at:fix.observedAt})
+    const {error:e}=shiftId==="OPEN_WEEK" ? await supabase.rpc("coach_open_gps_punch",{p_action:action,p_latitude:fix.latitude,p_longitude:fix.longitude,p_accuracy_m:fix.accuracy,p_observed_at:fix.observedAt}) : await supabase.rpc("coach_gps_time_punch",{p_work_shift_id:shiftId,p_action:action,p_latitude:fix.latitude,p_longitude:fix.longitude,p_accuracy_m:fix.accuracy,p_observed_at:fix.observedAt})
     if(e)setError(e.message)
     else{setNotice(action==="in"?"GPS verified: clock-in recorded.":"GPS verified: clock-out recorded.");await refresh()}
     setBusy(null)

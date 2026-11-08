@@ -38,6 +38,9 @@ export default function CoachScheduleOverview({shifts,onRefresh,onPunch,punchBus
  const [data,setData]=useState<Overview>({bookings:[],requests:[]}),[loading,setLoading]=useState(true),[error,setError]=useState(""),[notice,setNotice]=useState(""),[busy,setBusy]=useState<string|null>(null),[reason,setReason]=useState<Record<string,string>>({}),[week,setWeek]=useState(()=>monday(localDay(new Date().toISOString()))),[selected,setSelected]=useState(()=>localDay(new Date().toISOString()))
  const [clockDialog,setClockDialog]=useState<{shiftId:string;action:"in"|"out"}|null>(null)
  const [gpsEnabled,setGpsEnabled]=useState(false)
+ const [openWeek,setOpenWeek]=useState<{enabled:boolean;clock_in_at:string|null;clock_out_at:string|null}>({enabled:false,clock_in_at:null,clock_out_at:null})
+ async function loadOpenWeek(){const {data}=await db.rpc("coach_open_gps_status");if(data)setOpenWeek(data)}
+ useEffect(()=>{void loadOpenWeek()},[])
  useEffect(()=>{void db.rpc("coach_gps_attendance_status").then(({data})=>setGpsEnabled(Boolean(data?.enabled)))},[])
  const [clockError,setClockError]=useState("")
  const [clockSubmitting,setClockSubmitting]=useState(false)
@@ -55,17 +58,18 @@ export default function CoachScheduleOverview({shifts,onRefresh,onPunch,punchBus
  const currentShift=shifts.find(v=>v.clock_in_at&&!v.clock_out_at)
   || shifts.find(v=>localDay(v.starts_at)===today&&v.clock_out_at)
   || shifts.find(v=>localDay(v.starts_at)===today)
- const clockAction=currentShift?.clock_in_at?"out":"in"
+ const attendance=openWeek.enabled?openWeek:currentShift
+ const clockAction=attendance?.clock_in_at?"out":"in"
  const clockTime=(timestamp:string|null|undefined)=>{
    if(!timestamp)return ""
    const value=new Date(timestamp)
    return Number.isNaN(value.getTime())?"—":new Intl.DateTimeFormat("en-PH",{timeZone:"Asia/Manila",hour:"numeric",minute:"2-digit",hour12:true}).format(value)
  }
  function openClockDialog(){
-   if(!currentShift||currentShift.clock_out_at||punchBusy)return
+   if((!openWeek.enabled&&!currentShift)||attendance?.clock_out_at||punchBusy)return
 
    setClockError("")
-   setClockDialog({shiftId:currentShift.id,action:clockAction})
+   setClockDialog({shiftId:openWeek.enabled?"OPEN_WEEK":currentShift!.id,action:clockAction})
  }
  async function submitClock(){
    if(!clockDialog||clockSubmitting)return
@@ -74,7 +78,7 @@ export default function CoachScheduleOverview({shifts,onRefresh,onPunch,punchBus
    try{
      const position=await new Promise<GeolocationPosition>((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,timeout:15000,maximumAge:0}))
      const ok=await onPunch(clockDialog.shiftId,clockDialog.action,{latitude:position.coords.latitude,longitude:position.coords.longitude,accuracy:position.coords.accuracy,observedAt:new Date(position.timestamp).toISOString()})
-     if(ok)setClockDialog(null);else setClockError("GPS attendance was not recorded. Check the error displayed on this page.")
+     if(ok){setClockDialog(null);await loadOpenWeek()}else setClockError("GPS attendance was not recorded. Check the error displayed on this page.")
    }catch(e){setClockError(e instanceof Error?e.message:"GPS location unavailable.")}
    finally{setClockSubmitting(false)}
  }
@@ -84,15 +88,16 @@ export default function CoachScheduleOverview({shifts,onRefresh,onPunch,punchBus
  <div className="flex flex-col gap-4 border-b border-white/10 pb-5 xl:flex-row xl:items-start xl:justify-between">
  <div><p className="text-xs font-black uppercase tracking-[.22em] text-orange-300">Coach Operations · Admin-connected</p><h1 className="mt-2 text-3xl font-black">My Schedule</h1><p className="mt-2 text-sm text-white/50">Assigned by BearFit Admin · Philippines time</p></div>
  <div className="flex shrink-0 flex-col items-start gap-1.5 xl:items-end">
+  {openWeek.enabled&&<p className="text-xs text-orange-300">Open GPS testing · Nov 9–15 · Admin review required</p>}
   {!gpsEnabled&&<p className="text-xs text-amber-200">GPS branch setup required</p>}
-  {currentShift?.clock_in_at&&<span className="text-xs font-medium text-emerald-300">Clocked in: {clockTime(currentShift.clock_in_at)}</span>}
-  {currentShift?.clock_out_at&&<span className="text-xs font-medium text-white/55">Clocked out: {clockTime(currentShift.clock_out_at)}</span>}
-  {currentShift?.clock_out_at
+  {attendance?.clock_in_at&&<span className="text-xs font-medium text-emerald-300">Clocked in: {clockTime(attendance.clock_in_at)}</span>}
+  {attendance?.clock_out_at&&<span className="text-xs font-medium text-white/55">Clocked out: {clockTime(attendance.clock_out_at)}</span>}
+  {attendance?.clock_out_at
    ?<span className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-5 py-3 text-sm font-bold text-emerald-300">Shift completed</span>
-   :<button type="button" onClick={openClockDialog} disabled={!currentShift||punchBusy||!gpsEnabled}
-       title={!currentShift?"Admin must assign a shift before you can clock in.":!gpsEnabled?"Admin must enable this branch GPS attendance.":undefined}
+   :<button type="button" onClick={openClockDialog} disabled={(!openWeek.enabled&&!currentShift)||punchBusy||!gpsEnabled}
+       title={!openWeek.enabled&&!currentShift?"Admin must assign a shift before you can clock in.":!gpsEnabled?"Admin must enable this branch GPS attendance.":undefined}
        className="rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-orange-950/20 disabled:cursor-not-allowed disabled:opacity-40">
-        {currentShift?.clock_in_at?"Clock Out":"Clock In"}
+        {attendance?.clock_in_at?"Clock Out":"Clock In"}
      </button>}
  </div>
  </div>
