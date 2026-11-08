@@ -7,7 +7,7 @@ type Decoder=(data:Uint8ClampedArray,width:number,height:number,options?:{invers
 declare global {interface Window{jsQR?:Decoder}}
 function readMemberCode(raw:string){
  const value=raw.trim()
- if(/^BEARFIT-TAG:1:/i.test(value))throw new Error("This is a permanent BearFit tag (QR 001–006). Client assignment is not connected to the scanner yet. Ask Admin before using it.")
+ if(/^BEARFIT-TAG:1:/i.test(value))return value
  const match=value.match(/(?:^|[^A-Za-z0-9])(M\d{3,})(?=$|[^A-Za-z0-9])/i)
  if(!match)throw new Error("QR scanned, but it does not contain a BearFit member code (M0001).")
  return match[1].toUpperCase()
@@ -72,8 +72,24 @@ export default function CoachQrPage(){
   void start()
   return()=>{closed=true;window.clearTimeout(timer.current);stream?.getTracks().forEach(track=>track.stop());if(video.current)video.current.srcObject=null}
  },[cameraOn])
- useEffect(()=>{if(!code||verified||busy)return;let active=true;const t=window.setTimeout(()=>{if(active)void act(false)},350);return()=>{active=false;window.clearTimeout(t)}},[code,verified,busy])
- async function act(confirm:boolean){setBusy(true);setError("");const {data,error:err}=await db.rpc("coach_qr_session",{p_member_code:code.trim(),p_confirm:confirm});setBusy(false);if(err){setError(err.message);setVerified(null)}else{setVerified(data as Result);if(confirm)setCameraOn(false)}}
+ useEffect(()=>{if(!code)return;let active=true;const t=window.setTimeout(()=>{if(active)void act(false)},300);return()=>{active=false;window.clearTimeout(t)}},[code])
+ async function act(confirm:boolean){
+  setBusy(true);setError("")
+  try{
+   let memberCode=code.trim()
+   if(memberCode.startsWith("BEARFIT-TAG:1:")){
+    const {data:tag,error:tagError}=await db.rpc("coach_resolve_permanent_qr",{p_payload:memberCode})
+    if(tagError)throw new Error(tagError.message)
+    if(!tag?.assigned)throw new Error("This QR tag is reserved but has not been linked to a client yet.")
+    memberCode=tag.member_code
+   }
+   const {data,error:err}=await db.rpc("coach_qr_session",{p_member_code:memberCode,p_confirm:confirm})
+   if(err)throw new Error(err.message)
+   setVerified(data as Result)
+   if(confirm)setCameraOn(false)
+  }catch(e){setError(e instanceof Error?e.message:"Unable to verify QR");setVerified(null)}
+  finally{setBusy(false)}
+ }
  async function fileScan(file:File|undefined){
   if(!file)return
   setError("");setCameraOn(false);setVerified(null);setCode("")
