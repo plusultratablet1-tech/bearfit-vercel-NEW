@@ -109,27 +109,10 @@ export default function WelcomePage() {
     window.location.href = START_PAGE;
   };
 
-  // -----------------------------------
-  // init + redirect logic
-  // -----------------------------------
+  // Welcome is the permanent public homepage. Never redirect returning
+  // visitors away because they previously completed the introduction.
+  // Coach, member and staff authentication still happens on /login.
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-
-    if (params.get("reset") === "1") {
-      localStorage.removeItem(STORAGE_KEY);
-    }
-
-    if (params.get("preview") === "1") {
-      setReady(true);
-      return;
-    }
-
-    const done = localStorage.getItem(STORAGE_KEY) === "1";
-    if (done) {
-      window.location.replace(START_PAGE);
-      return;
-    }
-
     setReady(true);
   }, []);
 
@@ -236,6 +219,12 @@ export default function WelcomePage() {
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
+      <a
+        href="/login"
+        className="absolute right-4 top-4 z-30 rounded-full border border-white/40 bg-black/55 px-5 py-2.5 text-sm font-bold text-white backdrop-blur-md transition-colors hover:border-[#F37120] hover:bg-[#F37120] hover:text-black sm:right-8 sm:top-7"
+      >
+        Coach / Member Sign In
+      </a>
       {/* SLIDES */}
       <div
         className="flex h-full transition-transform duration-500 ease-out"
