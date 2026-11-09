@@ -32,13 +32,13 @@ begin
  -- Jensine: 48 paid + 5 free. 15 paid + 5 free left = 20.
  -- Paid used = 33, bonus used = 0. Total 53, used 33, remaining 20.
  update public.members set package_name='Full 48',package_type='Full 48',
-  total_sessions=53,sessions_used=33,sessions_left=20,remaining_sessions=20,
+  total_sessions=53,sessions_used=33,sessions_left=20,
   updated_at=now() where id=j.id;
  insert into public.member_package_cycles(member_id,package_id,status,sessions_total,sessions_used,sessions_left)
  values(j.id,(select id from public.package_definitions where code='FULL48'),'active',53,33,20);
  -- Dulce: Partial 24, 19 left, therefore 5 used. Payment status untouched.
  update public.members set package_name='Partial 24',package_type='Partial 24',
-  total_sessions=24,sessions_used=5,sessions_left=19,remaining_sessions=19,
+  total_sessions=24,sessions_used=5,sessions_left=19,
   updated_at=now() where id=d.id;
  insert into public.member_package_cycles(member_id,package_id,status,sessions_total,sessions_used,sessions_left)
  values(d.id,(select id from public.package_definitions where code='PARTIAL24'),'active',24,5,19);
