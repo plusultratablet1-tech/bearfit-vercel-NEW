@@ -92,7 +92,7 @@ export default function CoachClientCards({bookings=[]}:{bookings?:Booking[]}){
    {loading?<div className="rounded-2xl bg-[#242424] p-5 text-sm text-white/60">Loading assigned clients…</div>
    :<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
      {visible.map((client,index)=>{
-       const bonus=client.member_code==="M0012"?2:client.member_code==="M0010"?1:0
+       const bonus=client.member_code==="M0112"?5:client.member_code==="M0012"?2:client.member_code==="M0010"?1:0
        const remaining=bonus&&client.sessions_left>=bonus?(client.sessions_left-bonus)+" + "+bonus:client.sessions_left
        return <article key={client.member_code} className="min-w-0 rounded-[20px] bg-[#242424] p-5">
          <p className="text-xs text-white/50">Client {index+1}</p>
