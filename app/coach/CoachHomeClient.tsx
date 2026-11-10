@@ -29,6 +29,7 @@ function deadlineLabel(shift: Shift) {
 type CoachTab = "home" | "schedule" | "payments" | "profile"
 export default function CoachHomeClient({coach,tab="home"}:{coach:Coach|null;tab?:CoachTab}) {
   const [data,setData]=useState<Dashboard|null>(null)
+  const [historical,setHistorical]=useState<Array<{id:string;member_name:string;member_code:string;session_date:string;session_label:string}>>([])
   const [loading,setLoading]=useState(true)
   const [busy,setBusy]=useState<string|null>(null)
   const [error,setError]=useState("")
@@ -44,7 +45,7 @@ export default function CoachHomeClient({coach,tab="home"}:{coach:Coach|null;tab
     setLoading(true)
     const {data:result,error:e}=await supabase.rpc("coach_operational_dashboard")
     if(e) setError(e.message)
-    else {setData(result as Dashboard);setError("")}
+    else {setData(result as Dashboard);setError("");const history=await supabase.rpc("coach_historical_activity");if(!history.error&&Array.isArray(history.data))setHistorical(history.data)}
     setLoading(false)
   },[coach?.is_active])
   useEffect(()=>{void refresh()},[refresh])
@@ -109,6 +110,7 @@ export default function CoachHomeClient({coach,tab="home"}:{coach:Coach|null;tab
       {error&&<p role="alert" className="rounded-xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-200">{error}</p>}
       {notice&&<p role="status" className="rounded-xl border border-green-400/20 bg-green-400/10 p-4 text-sm text-green-200">{notice}</p>}
       {(!coach||!coach.is_active)&&<p className="rounded-xl border border-amber-400/25 bg-amber-400/10 p-4">Your coach account is not linked or is inactive. Ask Admin for help.</p>}
+      {tab==="home"&&historical.length>0&&<section className="rounded-2xl border border-orange-500/20 bg-[#171717] p-5"><h2 className="text-xl font-bold">Historical training sessions</h2><p className="mt-2 text-xs text-white/50">Owner-provided historical session records. Not payroll-approved.</p><div className="mt-3 space-y-2">{historical.map(h=><div key={h.id} className="flex flex-wrap justify-between gap-2 border-b border-white/10 py-2 text-sm"><span>{h.member_name} · {h.member_code}</span><span>{h.session_date}</span></div>)}</div></section>}
       {tab==="home"&&data&&coach&&<CoachDashboardMemberLayout coach={coach} bookings={data.bookings||[]} conductions={data.conductions||[]} shifts={data.shifts||[]}/>}
       {tab==="payments"&&<CoachPaymentsDashboard/>}
       {loading?<p className={card}>Loading your schedule…</p>:data&&<>
