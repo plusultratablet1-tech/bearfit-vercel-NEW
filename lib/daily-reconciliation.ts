@@ -14,7 +14,7 @@ export type Guest={id:string;branch:string;host_member_id:string|null;status:str
 export type ReconciliationData={
  date:string;
  members:Member[];coaches:Coach[];paid:Payment[];flagged:Payment[];missingPaidDate:Payment[];
- attendance:Attendance[];bookings:Booking[];plans:WorkShift[];clockins:ClockShift[];
+ attendance:Attendance[];bookings:Booking[];linkedBookings:Booking[];plans:WorkShift[];clockins:ClockShift[];
  conductions:Conduction[];guests:Guest[];
  failed:string[];
 }
@@ -24,6 +24,7 @@ export type ReconciliationStats={
  coachClockins:number;openClockins:number;conductionsApproved:number;conductionsForReview:number;
  guestEntries:number;guestPending:number;guestRecordedAmount:number;
  bookingsScheduled:number;possibleMissingCheckins:number;unassignedPayments:number;
+ bookingBranchMismatches:number;unattributedBookedVisits:number;
 }
 export const ALL_BRANCHES="ALL" as const
 const known=(branch:string|null|undefined)=>BEARFIT_BRANCHES.some(b=>b.id===branch)
@@ -51,9 +52,23 @@ export function reconciliationStats(d:ReconciliationData,scope:Scope,now=new Dat
  const payments=d.paid.filter(p=>paid(p)&&belongs(memberBranch(p.member_id),scope))
  const flagged=d.flagged.filter(p=>belongs(memberBranch(p.member_id),scope))
  const missingPaidDate=d.missingPaidDate.filter(p=>belongs(memberBranch(p.member_id),scope))
- const attendance=d.attendance.filter(a=>belongs(memberBranch(a.member_id),scope))
+ // Booked check-ins use the immutable source booking branch, not a member's editable branch.
+ const bookingById=new Map(d.bookings.concat(d.linkedBookings||[])
+  .filter(b=>membership(b.member_id)&&known(b.branch)).map(b=>[b.id,b]))
+ const linked=(a:Attendance)=>a.booking_id?bookingById.get(a.booking_id):undefined
+ const attendance=d.attendance.filter(a=>membership(a.member_id)&&(
+  a.booking_id ? linked(a)?.member_id===a.member_id&&belongs(linked(a)?.branch,scope)
+   : belongs(memberBranch(a.member_id),scope)))
  const bookingSet=new Set(attendance.map(a=>a.booking_id).filter(Boolean))
  const bookings=d.bookings.filter(b=>belongs(b.branch,scope)&&membership(b.member_id))
+ const bookingBranchMismatches=d.attendance.filter(a=>{
+  const booking=linked(a)
+  return !!booking&&booking.member_id===a.member_id&&membership(a.member_id)
+   &&booking.branch!==memberBranch(a.member_id)&&belongs(booking.branch,scope)
+ }).length
+ // Missing or mismatched booking links are never guessed into a branch's totals.
+ const unattributedBookedVisits=scope==="ALL"?d.attendance.filter(a=>
+  !!a.booking_id&&membership(a.member_id)&&linked(a)?.member_id!==a.member_id).length:0
  const plans=d.plans.filter(s=>belongs(s.branch,scope)&&!!realCoaches.get(s.coach_id))
  const clockins=d.clockins.filter(s=>belongs(s.branch,scope)&&!!realCoaches.get(s.coach_id))
  const conductions=d.conductions.filter(c=>belongs(c.branch,scope)&&membership(c.member_id)&&!!realCoaches.get(c.coach_id))
@@ -72,6 +87,7 @@ export function reconciliationStats(d:ReconciliationData,scope:Scope,now=new Dat
   guestRecordedAmount:guests.reduce((sum,g)=>sum+Number(g.amount_verified||0),0),
   bookingsScheduled:bookings.filter(b=>["confirmed","completed"].includes(b.status.toLowerCase())).length,
   possibleMissingCheckins:bookings.filter(b=>b.status.toLowerCase()==="confirmed"&&!!b.end_at&&new Date(b.end_at).getTime()<now.getTime()&&!bookingSet.has(b.id)).length,
-  unassignedPayments:scope==="ALL"?unassignedPayments:0
+  unassignedPayments:scope==="ALL"?unassignedPayments:0,
+  bookingBranchMismatches,unattributedBookedVisits
  }
 }

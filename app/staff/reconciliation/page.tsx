@@ -26,12 +26,20 @@ export default async function DailyReconciliationPage({searchParams}:{searchPara
   supabase.from("coach_conductions").select("id,member_id,coach_id,branch,status,session_date,rate_snapshot").eq("session_date",date).limit(1000),
   supabase.from("guest_invites").select("id,branch,host_member_id,status,purpose,visit_day,entered_at,amount_verified,payment_reference").eq("visit_day",date).limit(1000)
  ])
- const results={members,coaches,paid,flagged,missingPaidDate,attendance,bookings,plans,clockins,conductions,guests}
+ // Resolve booked visits crossing the selected-day boundary without guessing branch.
+ const presentIds=new Set((bookings.data??[]).map(b=>b.id))
+ const missingBookingIds=[...new Set((attendance.data??[]).map(a=>a.booking_id)
+  .filter((id):id is string=>typeof id==="string"&&!presentIds.has(id)))]
+ const linkedBookings=missingBookingIds.length>0&&missingBookingIds.length<=200
+  ? await supabase.from("bookings").select("id,member_id,branch,status,start_at,end_at").in("id",missingBookingIds).limit(200)
+  : {data:[] as Booking[],error:null}
+ const results={members,coaches,paid,flagged,missingPaidDate,attendance,bookings,linkedBookings,plans,clockins,conductions,guests}
  const caps:Record<string,number>={members:3000,coaches:500}
  const failed=Object.entries(results).flatMap(([key,r])=>[
    ...(r.error?[key]:[]),
-   ...((r.data?.length??0)>=(caps[key]??1000)?[key+"-limit"]:[])
+   ...((r.data?.length??0)>=(caps[key]??(key==="linkedBookings"?200:1000))?[key+"-limit"]:[])
  ])
+ if(missingBookingIds.length>200)failed.push("linkedBookings-limit")
  const data:ReconciliationData={
   date,
   members:(members.data??[]) as Member[],
@@ -41,6 +49,7 @@ export default async function DailyReconciliationPage({searchParams}:{searchPara
   missingPaidDate:(missingPaidDate.data??[]) as Payment[],
   attendance:(attendance.data??[]) as Attendance[],
   bookings:(bookings.data??[]) as Booking[],
+  linkedBookings:(linkedBookings.data??[]) as Booking[],
   plans:(plans.data??[]) as WorkShift[],
   clockins:(clockins.data??[]) as ClockShift[],
   conductions:(conductions.data??[]) as Conduction[],
