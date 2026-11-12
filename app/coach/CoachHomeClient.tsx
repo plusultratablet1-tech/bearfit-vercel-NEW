@@ -6,6 +6,7 @@ import { parseGuestCode } from "@/lib/guest-qr"
 import CoachDashboardMemberLayout from "./CoachDashboardMemberLayout"
 import CoachActivityPanel from "./CoachActivityPanel"
 import CoachScheduleOverview from "./CoachScheduleOverview"
+import CoachSessionPlanner from "./CoachSessionPlanner"
 import CoachPaymentsDashboard from "./CoachPaymentsDashboard"
 import { CalendarDays, CheckCircle2, Clock3, ClipboardCheck, LogOut, QrCode, ShieldCheck, RefreshCw, LockKeyhole } from "lucide-react"
 
@@ -118,7 +119,7 @@ export default function CoachHomeClient({coach,tab="home"}:{coach:Coach|null;tab
           <Metric name="Approved conductions (31d)" value={conductions.filter(c=>c.status==="approved").length}/>
           <Metric name="Pending review" value={conductions.filter(c=>c.status==="pending").length}/>
         </div>}
-        {tab==="schedule"&&<><CoachScheduleOverview shifts={data.shifts||[]} onRefresh={refresh} onPunch={punch} punchBusy={busy!==null}/><details className="rounded-[24px] border border-white/10 bg-[#121212] p-4 md:p-6"><summary className="cursor-pointer text-lg font-bold text-orange-300">Shift confirmation & guest operations</summary><div className="mt-5 space-y-5"><section className={card}>
+        {tab==="schedule"&&<><CoachSessionPlanner onCreated={refresh}/><CoachScheduleOverview shifts={data.shifts||[]} onRefresh={refresh} onPunch={punch} punchBusy={busy!==null}/><details className="rounded-[24px] border border-white/10 bg-[#121212] p-4 md:p-6"><summary className="cursor-pointer text-lg font-bold text-orange-300">Shift confirmation & guest operations</summary><div className="mt-5 space-y-5"><section className={card}>
           <h2 className="flex items-center gap-2 text-lg font-bold"><CalendarDays size={19} className="text-[#ff7a1a]"/> Shift confirmation</h2>
           <p className="mt-2 text-sm text-white/50">Confirm by 8:00 PM Philippine time on the day before each scheduled shift. No reply is flagged as unconfirmed, not automatically absent.</p>
           <div className="mt-4 space-y-3">
