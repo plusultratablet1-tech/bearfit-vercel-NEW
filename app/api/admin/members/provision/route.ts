@@ -88,9 +88,14 @@ export async function POST(request:Request){
   await admin.auth.admin.updateUserById(createdId,{ban_duration:"876000h"})
   return respond({error:"Created Auth account could not be verified and was disabled; admin review required. Client record was not deleted."},503)
  }
- await admin.auth.admin.updateUserById(createdId,{
+ const {error:finalizeError}=await admin.auth.admin.updateUserById(createdId,{
   user_metadata:{full_name:member.full_name},
+  app_metadata:{...created.user.app_metadata,bearfit_member_alias:true,bearfit_must_change_password:true},
  })
+ if(finalizeError){
+  await admin.auth.admin.updateUserById(createdId,{ban_duration:"876000h"})
+  return respond({error:"Member login was linked but could not be marked for a mandatory password change. Account disabled for admin review."},503)
+ }
  return respond({
   memberCode:member.member_code,temporaryPassword,
   message:"Member ID login created and linked. Share password privately; change required at first login.",
