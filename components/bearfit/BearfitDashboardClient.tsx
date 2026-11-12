@@ -39,6 +39,22 @@ import {
 
 const supabase = createClient()
 
+type OwnerReportedSession = {
+  id: string
+  session_date: string
+  session_count: number
+  source_balance_after: number | null
+  source_name: string
+  package_type: string
+  source_status: string | null
+}
+
+function manilaDateKey(iso: string) {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(iso))
+  const get = (type: string) => parts.find(part => part.type === type)?.value || ""
+  return `${get("year")}-${get("month")}-${get("day")}`
+}
+
 type Props = {
   userEmail: string | null
   userFullName: string | null
@@ -198,6 +214,24 @@ export default function BearfitDashboardClient({
   bearforceSummary,
   loadError,
 }: Props) {
+  const [reportedSessions, setReportedSessions] = useState<OwnerReportedSession[]>([])
+  useEffect(() => {
+    let mounted = true
+    if (!member?.id || member.branch !== "Malingap Branch") {
+      setReportedSessions([])
+      return () => { mounted = false }
+    }
+    void supabase.rpc("member_owner_reported_activity").then(({ data, error }) => {
+      if (!mounted) return
+      if (error) {
+        console.error("Failed to load privately scoped Malingap owner-reported activity", error)
+        return
+      }
+      setReportedSessions(Array.isArray(data) ? data as OwnerReportedSession[] : [])
+    })
+    return () => { mounted = false }
+  }, [member?.id, member?.branch])
+
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     window.location.href = "/welcome"
@@ -229,6 +263,31 @@ export default function BearfitDashboardClient({
   const nextBookingStart = nextBooking?.start_at || nextBooking?.requested_start_at || null
   const sessionCountdown = useSessionCountdown(nextBookingStart)
   const nextSessionVisual = nextBooking ? sessionVisualForType(nextBooking.session_label, nextBooking.session_type) : null
+  // Owner-reported attendance is informational only. If a day already has verified
+  // member sessions, do not display the same sessions a second time.
+  const verifiedByDay = new Map<string, number>()
+  for (const log of sessionLogs) {
+    const key = manilaDateKey(log.trained_at)
+    verifiedByDay.set(key, (verifiedByDay.get(key) || 0) + 1)
+  }
+  const reportedActivity = reportedSessions.flatMap(row => {
+    const verified = verifiedByDay.get(row.session_date) || 0
+    const count = Math.max(0, row.session_count - verified)
+    verifiedByDay.set(row.session_date, Math.max(0, verified - row.session_count))
+    if (count === 0) return []
+    return [{
+      id: `source-${row.id}`,
+      kind: "session" as const,
+      timestamp: `${row.session_date}T12:00:00+08:00`,
+      title: count === 1 ? "Training Session" : `${count} Training Sessions`,
+      detail: "Malingap coach report · pending verification",
+      amount: null as number | null,
+      sessionsLeft: null as number | null,
+      status: "reported" as string | null,
+      ownerReported: true,
+    }]
+  })
+
   const activityItems = [
     ...sessionLogs.map((log) => ({
       id: `session-${log.id}`,
@@ -239,7 +298,9 @@ export default function BearfitDashboardClient({
       amount: null as number | null,
       sessionsLeft: log.sessions_left_after,
       status: null as string | null,
+      ownerReported: false,
     })),
+    ...reportedActivity,
     ...payments.map((payment) => ({
       id: `payment-${payment.id}`,
       kind: "payment" as const,
@@ -249,6 +310,7 @@ export default function BearfitDashboardClient({
       amount: payment.amount,
       sessionsLeft: null as number | null,
       status: payment.status,
+      ownerReported: false,
     })),
   ]
     .sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime())
@@ -546,14 +608,14 @@ export default function BearfitDashboardClient({
                               <div className="min-w-0">
                                 <p className="font-bold">{item.title}</p>
                                 <p className={`mt-1 text-xs font-semibold ${item.kind === "session" ? "text-[#ff9b54]" : "text-emerald-400"}`}>
-                                  {item.kind === "session" ? "Session used" : "Payment received"}
+                                  {item.kind === "session" ? (item.ownerReported ? "Reported session" : "Session used") : "Payment received"}
                                 </p>
                                 <p className="mt-1 truncate text-xs text-white/35">{item.detail}</p>
                               </div>
                               <div className="text-left sm:text-right">
                                 <p className="text-xs text-white/40">{formatDateTime(item.timestamp)}</p>
                                 {item.kind === "session" ? (
-                                  <p className="mt-1 font-bold text-[#ff9b54]">{item.sessionsLeft} left</p>
+                                  <p className="mt-1 font-bold text-[#ff9b54]">{item.ownerReported ? "Coach-reported" : `${item.sessionsLeft} left`}</p>
                                 ) : (
                                   <>
                                     <p className="mt-1 font-bold">{formatMoney(item.amount)}</p>
