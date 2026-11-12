@@ -12,9 +12,13 @@ export async function POST(request: Request) {
       )
     }
 
-    // Coach login aliases are provisioned only by an authenticated Admin.
-    if (typeof email === "string" && email.trim().toLowerCase().endsWith("@accounts.bearfit.invalid")) {
-      return NextResponse.json({ error: "Coach accounts are created by BearFit Admin" }, { status: 403 })
+    // All reserved username aliases require a verified admin provisioning workflow.
+    // Do not permit members to claim another client's public M-number during signup.
+    if (typeof email === "string") {
+      const candidate = email.trim().toLowerCase()
+      if (candidate.endsWith("@accounts.bearfit.invalid") || candidate.endsWith("@members.bearfit.invalid")) {
+        return NextResponse.json({ error: "Reserved BearFit usernames are created by BearFit Admin" }, { status: 403 })
+      }
     }
 
     if (password.length < 6) {
