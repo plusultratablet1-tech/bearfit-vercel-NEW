@@ -35,13 +35,14 @@ export async function POST(request:Request){
  const url=process.env.NEXT_PUBLIC_SUPABASE_URL
  const keys=[...new Set([process.env.BEARFIT_SUPABASE_SECRET_KEY,process.env.SUPABASE_SECRET_KEY,process.env.SUPABASE_SERVICE_ROLE_KEY].filter((v):v is string=>Boolean(v?.trim())))]
  if(!url||keys.length===0)return respond({error:"Member provisioning needs a correctly configured server-only Supabase key"},503)
- let admin:ReturnType<typeof createSupabaseAdminClient>|null=null
- for(const key of keys){
-  const candidate=createSupabaseAdminClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}})
+ const candidates=keys.map(key=>createSupabaseAdminClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}}))
+ let admin=candidates[0]
+ let verified=false
+ for(const candidate of candidates){
   const {data:check,error}=await candidate.from("members").select("id,member_code").eq("id",member.id).maybeSingle()
-  if(!error&&check?.id===member.id&&check.member_code===member.member_code){admin=candidate;break}
+  if(!error&&check?.id===member.id&&check.member_code===member.member_code){admin=candidate;verified=true;break}
  }
- if(!admin)return respond({error:"Provisioning key cannot access the same BearFit member database"},503)
+ if(!verified)return respond({error:"Provisioning key cannot access the same BearFit member database"},503)
 
  const temporaryPassword=randomBytes(24).toString("base64url")
  if(action==="reset"){
