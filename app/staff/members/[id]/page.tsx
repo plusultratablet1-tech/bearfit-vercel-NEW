@@ -15,6 +15,7 @@ import {
   UserRound,
 } from "lucide-react"
 import StaffAppShell from "@/components/bearfit/StaffAppShell"
+import MemberLoginProvision from "./MemberLoginProvision"
 import { displaySessionLabel } from "@/lib/session-taxonomy"
 
 type Member = {
@@ -270,6 +271,10 @@ export default async function StaffMemberDetailPage({
             </Link>
           </div>
         </header>
+
+        {role==="admin" && member.branch==="Malingap Branch" && !member.is_demo && member.member_code && (
+          <div className="mt-4"><MemberLoginProvision memberId={member.id} memberCode={member.member_code} name={displayName} hasLogin={Boolean(member.user_id)}/></div>
+        )}
 
         {loadErrors.length > 0 && (
           <div className="mt-5 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-amber-200">

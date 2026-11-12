@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 import { redirect } from "next/navigation"
 import { MapPin } from "lucide-react"
+import Link from "next/link"
 import MemberAppShell from "@/components/bearfit/MemberAppShell"
 import { createClient } from "@/lib/supabase/server"
 import type {MemberRow,ProfileRow} from "@/lib/member-account"
@@ -139,6 +140,12 @@ export default async function MemberProfilePage() {
               <ProfileStat label="Sessions Used" value={String(member.sessions_used)} />
               <ProfileStat label="Total Paid" value={formatMoney(member.total_paid)} />
             </section>
+
+            <div className="rounded-2xl border border-white/10 bg-[#141414] p-4">
+              <h3 className="font-bold">Account security</h3>
+              <p className="mt-1 text-sm text-white/50">Your BearFit password protects your private records. You can change it whenever you like.</p>
+              <Link href="/account/change-password" className="mt-3 inline-flex rounded-lg bg-[#ff7a1a] px-4 py-2 text-sm font-bold">Change password</Link>
+            </div>
 
             <section className="grid gap-6 lg:grid-cols-2">
               <div className="rounded-[28px] bg-[#141414] p-5 md:p-6">
