@@ -38,7 +38,7 @@ export default function CoachScheduleOverview({shifts,onRefresh,onPunch,punchBus
  const [data,setData]=useState<Overview>({bookings:[],requests:[]}),[loading,setLoading]=useState(true),[error,setError]=useState(""),[notice,setNotice]=useState(""),[busy,setBusy]=useState<string|null>(null),[reason,setReason]=useState<Record<string,string>>({}),[week,setWeek]=useState(()=>monday(localDay(new Date().toISOString()))),[selected,setSelected]=useState(()=>localDay(new Date().toISOString()))
  const [clockDialog,setClockDialog]=useState<{shiftId:string;action:"in"|"out"}|null>(null)
  const [gpsEnabled,setGpsEnabled]=useState(false)
- const [openWeek,setOpenWeek]=useState<{enabled:boolean;clock_in_at:string|null;clock_out_at:string|null}>({enabled:false,clock_in_at:null,clock_out_at:null})
+ const [openWeek,setOpenWeek]=useState<{enabled:boolean;clock_in_at:string|null;clock_out_at:string|null;blocking_clock_in_at?:string|null}>({enabled:false,clock_in_at:null,clock_out_at:null})
  async function loadOpenWeek(){const {data}=await db.rpc("coach_open_gps_status");if(data)setOpenWeek(data)}
  useEffect(()=>{void loadOpenWeek()},[])
  useEffect(()=>{void db.rpc("coach_gps_attendance_status").then(({data})=>setGpsEnabled(Boolean(data?.enabled)))},[])
@@ -59,6 +59,7 @@ export default function CoachScheduleOverview({shifts,onRefresh,onPunch,punchBus
   || shifts.find(v=>localDay(v.starts_at)===today&&v.clock_out_at)
   || shifts.find(v=>localDay(v.starts_at)===today)
  const attendance=openWeek.enabled?openWeek:currentShift
+ const overdueClockIn=Boolean(openWeek.blocking_clock_in_at&&localDay(openWeek.blocking_clock_in_at)!==today)
  const clockAction=attendance?.clock_in_at?"out":"in"
  const clockTime=(timestamp:string|null|undefined)=>{
    if(!timestamp)return ""
@@ -66,7 +67,7 @@ export default function CoachScheduleOverview({shifts,onRefresh,onPunch,punchBus
    return Number.isNaN(value.getTime())?"—":new Intl.DateTimeFormat("en-PH",{timeZone:"Asia/Manila",hour:"numeric",minute:"2-digit",hour12:true}).format(value)
  }
  function openClockDialog(){
-   if((!openWeek.enabled&&!currentShift)||attendance?.clock_out_at||punchBusy)return
+   if(overdueClockIn||(!openWeek.enabled&&!currentShift)||attendance?.clock_out_at||punchBusy)return
 
    setClockError("")
    setClockDialog({shiftId:openWeek.enabled?"OPEN_WEEK":currentShift!.id,action:clockAction})
@@ -90,9 +91,12 @@ export default function CoachScheduleOverview({shifts,onRefresh,onPunch,punchBus
  <div className="flex shrink-0 flex-col items-start gap-1.5 xl:items-end">
   {openWeek.enabled&&<p className="text-xs text-orange-300">Open GPS testing · Nov 9–15 · Admin review required</p>}
   {!gpsEnabled&&<p className="text-xs text-amber-200">GPS branch setup required</p>}
-  {attendance?.clock_in_at&&<span className="text-xs font-medium text-emerald-300">Clocked in: {clockTime(attendance.clock_in_at)}</span>}
+  {overdueClockIn&&<p role="alert" className="max-w-sm text-sm font-semibold text-amber-300">Previous clock-in remains open ({ph(openWeek.blocking_clock_in_at)}). Admin must review and correct its actual clock-out time before a new clock-in.</p>}
+  {!overdueClockIn&&attendance?.clock_in_at&&<span className="text-xs font-medium text-emerald-300">Clocked in: {clockTime(attendance.clock_in_at)}</span>}
   {attendance?.clock_out_at&&<span className="text-xs font-medium text-white/55">Clocked out: {clockTime(attendance.clock_out_at)}</span>}
-  {attendance?.clock_out_at
+  {overdueClockIn
+   ?<span className="rounded-xl border border-amber-400/30 bg-amber-400/10 px-5 py-3 text-sm font-bold text-amber-200">Attendance review required</span>
+   :attendance?.clock_out_at
    ?<span className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-5 py-3 text-sm font-bold text-emerald-300">Shift completed</span>
    :<button type="button" onClick={openClockDialog} disabled={(!openWeek.enabled&&!currentShift)||punchBusy||!gpsEnabled}
        title={!openWeek.enabled&&!currentShift?"Admin must assign a shift before you can clock in.":!gpsEnabled?"Admin must enable this branch GPS attendance.":undefined}
