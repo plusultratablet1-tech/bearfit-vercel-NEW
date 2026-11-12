@@ -41,7 +41,7 @@ begin
     or p_start_at + (p_occurrences - 1) * interval '7 days' > now() + interval '90 days' then
     raise exception 'Choose a future time at least 5 minutes away, within the next 90 days';
   end if;
-  v_type := private.session_label_category(p_session_label);
+  -- The current taxonomy includes Strength & Conditioning, while the older\n  -- private helper does not. Keep the workaround scoped to this new RPC.\n  v_type := case when btrim(coalesce(p_session_label,'')) = 'Strength & Conditioning'\n    then 'fitness' else private.session_label_category(p_session_label) end;
 
   select * into v_member from public.members
     where upper(member_code)=upper(btrim(p_member_code))
