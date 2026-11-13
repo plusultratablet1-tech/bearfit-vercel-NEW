@@ -72,7 +72,7 @@ export default function CoachSessionPlanner({onCreated}:{onCreated:()=>Promise<v
     setBusy(false)
     if(rpcError){setError(rpcError.message);return}
     const count=(data as {count?:number}|null)?.count||1
-    setSuccess(count+" session"+(count===1?"":"s")+" plotted for Admin confirmation. No package sessions were deducted.")
+    setSuccess(count+" session"+(count===1?"":"s")+" plotted. Open Session Requests and tap Available to confirm if package/payment checks pass. No sessions deducted.")
     setMemberCode("")
     try{await onCreated()}catch{setError("Request saved, but refreshing your schedule failed. Reload the page to see it.")}
   }
@@ -82,7 +82,7 @@ export default function CoachSessionPlanner({onCreated}:{onCreated:()=>Promise<v
       <div>
         <p className="text-xs font-bold uppercase tracking-widest text-orange-300">Daily & weekly planner</p>
         <h2 className="mt-1 text-xl font-black">Plot a client session</h2>
-        <p className="mt-1 text-sm text-white/55">Choose an assigned client. Admin confirms the final booking.</p>
+        <p className="mt-1 text-sm text-white/55">Choose an assigned client. Then tap Available in Session Requests to confirm when package and payment checks pass.</p>
       </div>
       <button type="button" onClick={()=>{setOpen(v=>!v);setError("");setSuccess("")}}
         aria-expanded={open}
@@ -132,7 +132,7 @@ export default function CoachSessionPlanner({onCreated}:{onCreated:()=>Promise<v
           {[2,3,4,5,6,7,8].map(n=><option key={n} value={n}>{n} weeks</option>)}
         </select>
       </label>}
-      <p className="text-xs text-white/50">New sessions appear as Pending in the shared schedule. Scheduling does not mark attendance, deduct credits, or alter coach payroll. Conflicts stop the entire request.</p>
+      <p className="text-xs text-white/50">New sessions appear as Pending. Tap Available under Session Requests to confirm an eligible plotted session. Payments and package rules still apply. Plotting never marks attendance, deducts credits, or alters payroll.</p>
       {rosterError&&<p role="alert" className="text-sm text-red-300">{rosterError}</p>}
       {clients.length===0&&!rosterLoading&&!rosterError&&<p className="text-sm text-amber-300">No clients assigned yet. Ask Admin to link your clients first.</p>}
       {error&&<p role="alert" className="text-sm text-red-300">{error}</p>}
