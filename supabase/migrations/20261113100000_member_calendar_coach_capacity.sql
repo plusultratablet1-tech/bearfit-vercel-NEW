@@ -7,7 +7,7 @@ alter table public.coaches
 create or replace function public.admin_set_coach_scheduling_specialization(
   p_coach_id uuid,p_specialization text
 ) returns void language plpgsql security definer set search_path=''
-as $$
+as $bearfit$
 begin
   if (select auth.uid()) is null or not exists(
     select 1 from public.profiles p where p.id=(select auth.uid()) and p.role='admin'
@@ -16,18 +16,18 @@ begin
   update public.coaches set scheduling_specialization=p_specialization,updated_at=now()
     where id=p_coach_id and is_active and user_id is not null;
   if not found then raise exception 'Active linked coach not found'; end if;
-end; $$;
+end; $bearfit$;
 revoke all on function public.admin_set_coach_scheduling_specialization(uuid,text) from public,anon;
 grant execute on function public.admin_set_coach_scheduling_specialization(uuid,text) to authenticated;
 
 -- Source-of-truth validation; a coach can be a cardio specialist or S&C, not both simultaneously.
 create or replace function private.validate_coach_training_slot()
 returns trigger language plpgsql security definer set search_path=''
-as $$
+as $bearfit$
 begin
   if new.session_label in ('Strength & Conditioning','Cardio') then
     if new.coach_user_id is null then raise exception 'Choose a coach for this training type'; end if;
-    if new.capacity > case when new.session_label='Cardio' then 1 else 3 end then
+    if new.capacity > (case when new.session_label='Cardio' then 1 else 3 end) then
       raise exception 'Capacity exceeds the coach limit'; end if;
     if not exists (
       select 1 from public.coaches c where c.user_id=new.coach_user_id
@@ -36,7 +36,7 @@ begin
     ) then raise exception 'Coach specialization or branch does not match the session'; end if;
   end if;
   return new;
-end; $$;
+end; $bearfit$;
 
 drop trigger if exists validate_coach_training_slot on public.schedule_slots;
 create trigger validate_coach_training_slot before insert or update of coach_user_id,branch,session_label,capacity
@@ -54,7 +54,7 @@ returns table(
   session_label text,start_at timestamptz,end_at timestamptz,
   capacity integer,booked integer,remaining integer
 ) language sql stable security definer set search_path=''
-as $$
+as $bearfit$
 select s.id,s.coach_user_id,c.display_name,s.branch,s.session_type,s.session_label,
   s.start_at,s.end_at,
   least(s.capacity,case when s.session_label='Cardio' then 1 when s.session_label='Strength & Conditioning' then 3 else s.capacity end)::integer,
@@ -97,7 +97,7 @@ create or replace function private.confirm_booking_core(
   p_booking_id uuid,p_slot_id uuid default null,p_assigned_coach_user_id uuid default null,p_require_pending boolean default true
 )
 returns jsonb language plpgsql security definer set search_path=''
-as $$
+as $bearfit$
 declare
   v_booking public.bookings%rowtype;
   v_member public.members%rowtype;
@@ -184,7 +184,7 @@ begin
     member_package_id=v_member_package,session_label=coalesce(v_booking.session_label,v_slot.session_label)
   where id=v_booking.id;
   return jsonb_build_object('booking_id',v_booking.id,'status','confirmed','slot_id',v_slot.id,'member_package_id',v_member_package,'session_label',coalesce(v_booking.session_label,v_slot.session_label));
-end; $$;
+end; $bearfit$;
 
 -- Existing coach planner retains assignment and package safeguards, with 3-way S&C overlap.
 create or replace function public.coach_plot_sessions(
@@ -195,7 +195,7 @@ create or replace function public.coach_plot_sessions(
   p_occurrences integer default 1
 )
 returns jsonb language plpgsql security definer set search_path=''
-as $$
+as $bearfit$
 declare
   v_coach public.coaches%rowtype;
   v_member public.members%rowtype;
@@ -313,17 +313,17 @@ begin
 
   return jsonb_build_object('booking_ids',v_ids,'count',p_occurrences,
     'status','pending','message','Sessions plotted for Admin confirmation. No sessions deducted.');
-end; $$;
+end; $bearfit$;
 
 -- Member's custom-session coach selector now lists linked active coaches, not staff/admin accounts.
 create or replace function public.member_coach_directory()
 returns table(id uuid,full_name text,branch text)
 language sql stable security definer set search_path=''
-as $$
+as $bearfit$
   select c.user_id,c.display_name,c.branch from public.coaches c
   join public.members m on m.user_id=(select auth.uid()) and m.branch=c.branch
   where c.is_active and not coalesce(c.is_demo,false) and c.user_id is not null
   order by c.display_name;
-$$;
+$bearfit$;
 revoke all on function public.member_coach_directory() from public,anon;
 grant execute on function public.member_coach_directory() to authenticated;
