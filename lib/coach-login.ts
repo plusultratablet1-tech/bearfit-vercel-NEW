@@ -20,5 +20,9 @@ export function memberAliasEmail(memberCode:string){
 }
 
 export function resolveLoginEmail(value: string) {
-  return coachAliasEmail(value) ?? memberAliasEmail(value) ?? value.trim().toLowerCase()
+  const input = value.trim().toLowerCase()
+  // Keep existing Supabase Auth aliases unchanged; the .ph address is a public
+  // member-facing login handle and must not require a data migration.
+  const friendlyMemberHandle = input.match(/^(m[0-9]{4,6})@members\.bearfit\.ph$/)
+  return coachAliasEmail(input) ?? memberAliasEmail(friendlyMemberHandle?.[1] ?? input) ?? input
 }
