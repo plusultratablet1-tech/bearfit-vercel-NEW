@@ -234,7 +234,7 @@ begin
 
   if p_session_label in ('Strength & Conditioning','Cardio')
     and v_coach.scheduling_specialization <>
-      case when p_session_label='Cardio' then 'cardio' else 'strength_conditioning' end)
+      (case when p_session_label='Cardio' then 'cardio' else 'strength_conditioning' end)
   then raise exception 'This coach is not assigned to the requested training type'; end if;
 
   select * into v_member from public.members
