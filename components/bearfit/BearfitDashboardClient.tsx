@@ -65,6 +65,7 @@ function formatDateTime(iso: string | null) {
     day: "2-digit",
     hour: "numeric",
     minute: "2-digit",
+    timeZone: "Asia/Manila",
   })
 }
 
@@ -198,6 +199,8 @@ export default function BearfitDashboardClient({
   bearforceSummary,
   loadError,
 }: Props) {
+  const [activityTab, setActivityTab] = useState<"all" | "sessions" | "payments">("all")
+  const [activityLimit, setActivityLimit] = useState<3 | 10>(3)
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     window.location.href = "/welcome"
@@ -225,7 +228,16 @@ export default function BearfitDashboardClient({
   const progress = totalSessions > 0 ? Math.min((sessionsUsed / totalSessions) * 100, 100) : 0
   const primaryPackageAlert = [...packageAlerts].sort((a, b) => alertPriority(b) - alertPriority(a))[0] ?? null
   const primaryPackageMessage = primaryPackageAlert?.blockingReason || primaryPackageAlert?.message || null
-  const nextBooking = upcomingBookings[0] ?? null
+  const confirmedBookings = upcomingBookings.filter((booking) => booking.status === "confirmed")
+  const pendingBookingCount = upcomingBookings.filter((booking) => booking.status === "pending").length
+  const nextBooking = confirmedBookings[0] ?? null
+  const headerNotice = primaryPackageMessage
+    ? { label: "Package notice", title: primaryPackageMessage, detail: "Review your package and payment details.", href: "/member/payments", action: "View payments" }
+    : pendingBookingCount > 0
+      ? { label: "Schedule notice", title: `${pendingBookingCount} booking request${pendingBookingCount === 1 ? "" : "s"} awaiting confirmation`, detail: "BearFit Admin will review your requested sessions.", href: "/member/schedule", action: "View requests" }
+      : !nextBooking
+        ? { label: "Schedule notice", title: "No upcoming session booked", detail: "Choose an available day and request a session.", href: "/member/schedule", action: "Open schedule" }
+        : null
   const nextBookingStart = nextBooking?.start_at || nextBooking?.requested_start_at || null
   const sessionCountdown = useSessionCountdown(nextBookingStart)
   const nextSessionVisual = nextBooking ? sessionVisualForType(nextBooking.session_label, nextBooking.session_type) : null
@@ -252,7 +264,10 @@ export default function BearfitDashboardClient({
     })),
   ]
     .sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime())
-    .slice(0, 7)
+  const filteredActivityItems = activityItems.filter((item) =>
+    activityTab === "all" || item.kind === (activityTab === "sessions" ? "session" : "payment")
+  )
+  const visibleActivityItems = filteredActivityItems.slice(0, activityLimit)
   void packageEligibility
 
   return (
@@ -284,15 +299,29 @@ export default function BearfitDashboardClient({
               </div>
             </header>
 
-            <div className="py-5">
-              <h1 className="text-2xl font-medium text-white/75 md:text-3xl">
-                Welcome, <span className="font-extrabold text-white">{displayName}</span>
-              </h1>
-              <p className="mt-1 text-sm text-white/40">{userEmail || "Signed-in BearFit member"}</p>
-              <Link href="/member/guests" className="mt-4 inline-flex items-center gap-2 rounded-xl border border-[#ff7a1a]/30 bg-[#ff7a1a]/10 px-4 py-3 text-sm font-bold text-[#ff9b54] hover:bg-[#ff7a1a]/20">
-                <UsersRound size={18}/> Bring a Friend / Guest Pass <ChevronRight size={16}/>
-              </Link>
-            </div>
+            <section className="grid gap-4 py-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(280px,1fr)] lg:items-stretch">
+              <div className="flex min-w-0 flex-col justify-center">
+                <h1 className="text-2xl font-medium text-white/75 md:text-3xl">
+                  Welcome, <span className="font-extrabold text-white">{displayName}</span>
+                </h1>
+                <p className="mt-1 break-all text-sm text-white/45">
+                  {member?.member_code ? `${member.member_code.toLowerCase()}@members.bearfit.ph` : userEmail || "Signed-in BearFit member"}
+                </p>
+                <Link href="/member/guests" className="mt-4 inline-flex w-fit items-center gap-2 rounded-xl border border-[#ff7a1a]/30 bg-[#ff7a1a]/10 px-4 py-3 text-sm font-bold text-[#ff9b54] hover:bg-[#ff7a1a]/20">
+                  <UsersRound size={18}/> Bring a Friend / Guest Pass <ChevronRight size={16}/>
+                </Link>
+              </div>
+              {member && headerNotice && (
+                <aside aria-label={headerNotice.label} className="flex flex-col justify-center rounded-[22px] border border-[#ff7a1a]/30 bg-[#ff7a1a]/10 p-5">
+                  <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-[#ff9b54]">{headerNotice.label}</p>
+                  <h2 className="mt-2 text-lg font-extrabold text-white">{headerNotice.title}</h2>
+                  <p className="mt-1 text-xs leading-relaxed text-white/60">{headerNotice.detail}</p>
+                  <Link href={headerNotice.href} className="mt-3 inline-flex w-fit items-center gap-1 text-xs font-bold text-[#ff9b54] hover:underline">
+                    {headerNotice.action} <ChevronRight size={14}/>
+                  </Link>
+                </aside>
+              )}
+            </section>
 
             {loadError && (
               <div className="mb-5 rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">
@@ -410,14 +439,6 @@ export default function BearfitDashboardClient({
                     </div>
                   </section>
 
-                  {primaryPackageMessage && (
-                    <section className={`mt-6 rounded-2xl border px-5 py-4 ${alertPriority(primaryPackageAlert!) >= 2 ? "border-orange-400/35 bg-orange-400/10 text-orange-100" : "border-amber-300/30 bg-amber-300/10 text-amber-100"}`}>
-                      <p className="text-xs font-bold uppercase tracking-[0.16em]">Package notice</p>
-                      <p className="mt-1 font-semibold">{primaryPackageMessage}</p>
-                      <p className="mt-1 text-xs opacity-70">Payment Due, Renewal Soon, and Last Session notices are calculated from your current package status.</p>
-                    </section>
-                  )}
-
                   <section className="mt-7">
                     <div className="mb-4 flex items-center justify-between gap-3">
                       <div>
@@ -501,9 +522,9 @@ export default function BearfitDashboardClient({
                           </div>
                         </article>
 
-                        {upcomingBookings.length > 1 && (
+                        {confirmedBookings.length > 1 && (
                           <div className="mt-3 grid gap-2 md:grid-cols-2">
-                            {upcomingBookings.slice(1).map((booking) => (
+                            {confirmedBookings.slice(1).map((booking) => (
                               <Link key={booking.id} href="/member/schedule" className="flex items-center justify-between gap-3 rounded-2xl border border-white/[0.07] bg-[#1b1b1b] px-4 py-3 transition hover:bg-[#202020]">
                                 <div className="min-w-0">
                                   <p className="truncate font-bold">{formatSessionTitle(booking.session_label, booking.session_type)}</p>
