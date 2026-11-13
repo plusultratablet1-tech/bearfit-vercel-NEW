@@ -552,26 +552,38 @@ export default function BearfitDashboardClient({
                       <Activity size={22} className="text-[#ff7a1a]" />
                     </div>
 
-                    <div className="mt-4 grid grid-cols-3 border-y border-white/10 px-3 text-center text-xs font-semibold text-white/45 md:px-5">
-                      <span className="border-b-2 border-[#ff7a1a] py-3 text-white">Activity Log</span>
-                      <span className="py-3">Sessions</span>
-                      <span className="py-3">Payments</span>
+                    <div role="tablist" aria-label="Member activity filters" className="mt-4 grid grid-cols-3 border-y border-white/10 px-3 text-center text-xs font-semibold text-white/45 md:px-5">
+                      {([
+                        { id: "all", label: "Activity Log" },
+                        { id: "sessions", label: "Sessions" },
+                        { id: "payments", label: "Payments" },
+                      ] as const).map((tab) => (
+                        <button key={tab.id} type="button" role="tab" aria-selected={activityTab === tab.id}
+                          onClick={() => { setActivityTab(tab.id); setActivityLimit(3) }}
+                          className={`py-3 transition-colors hover:text-white ${activityTab === tab.id ? "border-b-2 border-[#ff7a1a] text-white" : "text-white/45"}`}>
+                          {tab.label}
+                        </button>
+                      ))}
                     </div>
 
                     <div className="p-3 md:p-5">
-                      {activityItems.length === 0 ? (
-                        <EmptyState text="Your completed sessions and payments will appear here." />
+                      {filteredActivityItems.length === 0 ? (
+                        <EmptyState text={activityTab === "payments"
+                          ? "No payment transactions recorded yet. Visit Payments for package balance and dues."
+                          : activityTab === "sessions"
+                          ? "No completed session records yet. Visit Schedule to view bookings."
+                          : "Your completed sessions and payment records will appear here."} />
                       ) : (
                         <div className="space-y-2 sm:space-y-0 sm:divide-y sm:divide-white/[0.06]">
-                          {activityItems.map((item) => (
+                          {visibleActivityItems.map((item) => (
                             <div key={item.id} className="grid gap-3 rounded-2xl border border-white/[0.05] bg-white/[0.025] px-3 py-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0">
                               <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${item.kind === "session" ? "bg-[#ff7a1a] text-white" : "bg-emerald-500/15 text-emerald-300"}`}>
                                 {item.kind === "session" ? <Dumbbell size={20} /> : <ReceiptText size={20} />}
                               </div>
                               <div className="min-w-0">
                                 <p className="font-bold">{item.title}</p>
-                                <p className={`mt-1 text-xs font-semibold ${item.kind === "session" ? "text-[#ff9b54]" : "text-emerald-400"}`}>
-                                  {item.kind === "session" ? "Session used" : "Payment received"}
+                                <p className={`mt-1 text-xs font-semibold ${item.kind === "session" ? "text-[#ff9b54]" : item.status === "paid" ? "text-emerald-400" : "text-amber-300"}`}>
+                                  {item.kind === "session" ? "Session used" : item.status === "paid" ? "Payment received" : item.status === "pending" ? "Payment pending" : "Payment record"}
                                 </p>
                                 <p className="mt-1 truncate text-xs text-white/35">{item.detail}</p>
                               </div>
@@ -590,6 +602,26 @@ export default function BearfitDashboardClient({
                           ))}
                         </div>
                       )}
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 px-4 py-3 md:px-5">
+                      <div className="text-xs text-white/45">
+                        Showing {Math.min(activityLimit, filteredActivityItems.length)} of {filteredActivityItems.length} records
+                      </div>
+                      <div className="flex flex-wrap items-center gap-4">
+                        {filteredActivityItems.length > 3 && (
+                          <button type="button" onClick={() => setActivityLimit(activityLimit === 3 ? 10 : 3)}
+                            className="text-xs font-bold text-[#ff9b54] hover:underline">
+                            {activityLimit === 3 ? "Show 10" : "Show 3"}
+                          </button>
+                        )}
+                        {activityTab === "sessions" ? (
+                          <Link href="/member/schedule" className="text-xs font-bold text-[#ff9b54] hover:underline">Open Schedule</Link>
+                        ) : activityTab === "payments" ? (
+                          <Link href="/member/payments" className="text-xs font-bold text-[#ff9b54] hover:underline">View all payments</Link>
+                        ) : (
+                          <Link href="/member/payments" className="text-xs font-bold text-[#ff9b54] hover:underline">Payment details</Link>
+                        )}
+                      </div>
                     </div>
                   </section>
 
