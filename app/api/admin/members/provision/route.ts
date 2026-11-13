@@ -46,17 +46,19 @@ export async function POST(request:Request){
      process.env.SUPABASE_SERVICE_ROLE_KEY].filter((s):s is string=>Boolean(s?.trim()))
   )]
   if(!url||serverKeys.length===0)return reply({error:"Member account service is not configured"},503)
-  let privileged:null|ReturnType<typeof createAdminClient>=null
+  let privileged=createAdminClient(url,serverKeys[0],{auth:{persistSession:false,autoRefreshToken:false}})
+  let privilegedVerified=false
   for(const key of serverKeys){
     const candidate=createAdminClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}})
     const {data:serverMember,error:readError}=await candidate.from("members")
       .select("id,member_code,user_id").eq("id",member.id).maybeSingle()
     if(!readError&&serverMember?.id===member.id&&serverMember?.member_code===member.member_code){
       privileged=candidate
+      privilegedVerified=true
       break
     }
   }
-  if(!privileged)return reply({error:"Member account service cannot access this project. Check the server-only Supabase key."},503)
+  if(!privilegedVerified)return reply({error:"Member account service cannot access this project. Check the server-only Supabase key."},503)
 
   const password=randomBytes(24).toString("base64url")
   if(action==="reset"){
