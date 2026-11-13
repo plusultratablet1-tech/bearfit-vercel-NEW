@@ -12,6 +12,13 @@ export function coachAliasEmail(value: string) {
   return username ? username + "@" + COACH_ALIAS_DOMAIN : null
 }
 
+// Member IDs resolve to reserved aliases; no public member signup can use them.
+export const MEMBER_ALIAS_DOMAIN = "members.bearfit.invalid"
+export function memberAliasEmail(memberCode:string){
+  const code=memberCode.trim().toLowerCase()
+  return /^m[0-9]{4,6}$/.test(code) ? code+"@"+MEMBER_ALIAS_DOMAIN : null
+}
+
 export function resolveLoginEmail(value: string) {
-  return coachAliasEmail(value) ?? value.trim().toLowerCase()
+  return coachAliasEmail(value) ?? memberAliasEmail(value) ?? value.trim().toLowerCase()
 }
