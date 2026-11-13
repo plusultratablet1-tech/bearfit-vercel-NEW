@@ -312,14 +312,14 @@ export default function BearfitDashboardClient({
                 </Link>
               </div>
               {member && headerNotice && (
-                <aside aria-label={headerNotice.label} className="flex flex-col justify-center rounded-[22px] border border-[#ff7a1a]/30 bg-[#ff7a1a]/10 p-5">
+                <div role="status" aria-label={headerNotice.label} className="flex flex-col justify-center rounded-[22px] border border-[#ff7a1a]/30 bg-[#ff7a1a]/10 p-5">
                   <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-[#ff9b54]">{headerNotice.label}</p>
                   <h2 className="mt-2 text-lg font-extrabold text-white">{headerNotice.title}</h2>
                   <p className="mt-1 text-xs leading-relaxed text-white/60">{headerNotice.detail}</p>
                   <Link href={headerNotice.href} className="mt-3 inline-flex w-fit items-center gap-1 text-xs font-bold text-[#ff9b54] hover:underline">
                     {headerNotice.action} <ChevronRight size={14}/>
                   </Link>
-                </aside>
+                </div>
               )}
             </section>
 
