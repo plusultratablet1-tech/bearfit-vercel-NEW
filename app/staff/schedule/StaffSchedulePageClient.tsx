@@ -9,6 +9,7 @@ import {BRANCH_IDS} from "@/lib/branches"
 
 const supabase = createClient()
 type Profile = { id: string; full_name: string; role: string; branch: string }
+type CoachSpecialization = {id:string;display_name:string;branch:string;scheduling_specialization:string;is_active:boolean;user_id:string|null}
 type Member = { id: string; member_code: string; full_name: string; branch: string }
 type Slot = { id: string; coach_user_id: string | null; branch: string; session_type: string; session_label: string | null; start_at: string; end_at: string; capacity: number; status: string }
 type MemberJoin = { member_code: string; full_name: string }
@@ -28,6 +29,7 @@ function bookingMember(booking: Booking): MemberJoin | null {
 
 export default function StaffSchedulePageClient({ role, currentUserId }: { role: "staff" | "admin"; currentUserId: string }) {
   const [profiles, setProfiles] = useState<Profile[]>([])
+  const [coachSpecializations,setCoachSpecializations] = useState<CoachSpecialization[]>([])
   const [members, setMembers] = useState<Member[]>([])
   const [slots, setSlots] = useState<Slot[]>([])
   const [bookings, setBookings] = useState<Booking[]>([])
@@ -37,20 +39,22 @@ export default function StaffSchedulePageClient({ role, currentUserId }: { role:
   const [working, setWorking] = useState<string | null>(null)
   const [bookingCoach, setBookingCoach] = useState<Record<string, string>>({})
   const [chargeNoShow, setChargeNoShow] = useState<Record<string, boolean>>({})
-  const [recurring, setRecurring] = useState({ coach: currentUserId, branch: "Malingap Branch", sessionLabel: "Strength Training", weekday: "1", start: "09:00", end: "12:00", duration: "60", capacity: "1", validFrom: new Date().toISOString().slice(0, 10), validUntil: "" })
-  const [oneOff, setOneOff] = useState({ coach: currentUserId, branch: "Malingap Branch", sessionLabel: "Strength Training", start: "", duration: "60", capacity: "1" })
+  const [recurring, setRecurring] = useState({ coach: currentUserId, branch: "Malingap Branch", sessionLabel: "Strength Training", weekday: "1", start: "09:00", end: "12:00", duration: "60", capacity: "3", validFrom: new Date().toISOString().slice(0, 10), validUntil: "" })
+  const [oneOff, setOneOff] = useState({ coach: currentUserId, branch: "Malingap Branch", sessionLabel: "Strength Training", start: "", duration: "60", capacity: "3" })
   const [assignment, setAssignment] = useState({ memberId: "", slotId: "" })
 
   async function load() {
-    const [p, m, s, b, a] = await Promise.all([
+    const [p, m, s, b, a, coachRows] = await Promise.all([
       supabase.from("profiles").select("id,full_name,role,branch").in("role", ["staff", "admin"]),
       supabase.from("members").select("id,member_code,full_name,branch").order("full_name").limit(200),
       supabase.from("schedule_slots").select("*").gte("start_at", new Date().toISOString()).order("start_at").limit(100),
       supabase.from("bookings").select("*,members:members(member_code,full_name)").in("status", ["pending", "confirmed"]).order("requested_start_at").limit(100),
       supabase.rpc("staff_package_attention_queue"),
+      supabase.from("coaches").select("id,display_name,branch,scheduling_specialization,is_active,user_id").eq("is_active",true),
     ])
-    for (const r of [p, m, s, b, a]) if (r.error) setError(r.error.message)
+    for (const r of [p, m, s, b, a, coachRows]) if (r.error) setError(r.error.message)
     setProfiles((p.data ?? []) as Profile[])
+    setCoachSpecializations((coachRows.data ?? []) as CoachSpecialization[])
     setMembers((m.data ?? []) as Member[])
     setSlots((s.data ?? []) as Slot[])
     setBookings((b.data ?? []) as Booking[])
@@ -58,6 +62,16 @@ export default function StaffSchedulePageClient({ role, currentUserId }: { role:
   }
 
   useEffect(() => { void load() }, [])
+
+  async function updateCoachSpecialization(coachId:string,specialization:string) {
+    if(role!=="admin")return
+    setWorking("specialization:"+coachId);setError(null);setSuccess(null)
+    const {error:rpcError}=await supabase.rpc("admin_set_coach_scheduling_specialization",{p_coach_id:coachId,p_specialization:specialization})
+    setWorking(null)
+    if(rpcError){setError(rpcError.message);return}
+    setSuccess("Coach training specialization updated.")
+    await load()
+  }
 
   async function createRecurring(e: FormEvent) {
     e.preventDefault(); setWorking("recurring"); setError(null)
@@ -111,14 +125,28 @@ export default function StaffSchedulePageClient({ role, currentUserId }: { role:
     {error && <div className="mb-4 rounded-2xl bg-red-500/10 p-4 text-red-200">{error}</div>}{success && <div className="mb-4 rounded-2xl bg-emerald-500/10 p-4 text-emerald-200">{success}</div>}
 
     <section className="mb-6 grid gap-4 lg:grid-cols-2">
-      <form onSubmit={createRecurring} className="rounded-[24px] border border-white/10 bg-[#141414] p-5"><h2 className="text-xl font-bold">Recurring availability</h2><p className="text-xs text-white/45">Creates slots for the next 8 weeks.</p><div className="mt-4 grid gap-3 sm:grid-cols-2"><Sel v={recurring.coach} set={v => setRecurring({ ...recurring, coach: v })}>{profiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}</Sel><Sel v={recurring.branch} set={v=>setRecurring({...recurring,branch:v,sessionLabel:v==="Primark Cainta"?"Strength & Conditioning":recurring.sessionLabel})}>{BRANCH_IDS.map(b=><option key={b} value={b}>{b}</option>)}</Sel><div><Sel v={recurring.sessionLabel} set={v => setRecurring({ ...recurring, sessionLabel: v })}>{availableServices(recurring.branch).map(item => <option key={item.label} value={item.label}>{item.label}</option>)}</Sel><p className="mt-1 text-[11px] text-white/40">Package category: {categoryForSessionLabel(recurring.sessionLabel)}</p></div><Sel v={recurring.weekday} set={v => setRecurring({ ...recurring, weekday: v })}>{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d, i) => <option key={d} value={i}>{d}</option>)}</Sel><Inp v={recurring.start} set={v => setRecurring({ ...recurring, start: v })} type="time"/><Inp v={recurring.end} set={v => setRecurring({ ...recurring, end: v })} type="time"/><Inp v={recurring.duration} set={v => setRecurring({ ...recurring, duration: v })} ph="Duration minutes"/><Inp v={recurring.capacity} set={v => setRecurring({ ...recurring, capacity: v })} ph="Capacity"/><Inp v={recurring.validFrom} set={v => setRecurring({ ...recurring, validFrom: v })} type="date"/><Inp v={recurring.validUntil} set={v => setRecurring({ ...recurring, validUntil: v })} type="date"/></div><button disabled={working === "recurring"} className="mt-4 rounded-xl bg-[#ff7a1a] px-4 py-3 font-bold">Save recurring rule</button></form>
-      <form onSubmit={createOneOff} className="rounded-[24px] border border-white/10 bg-[#141414] p-5"><h2 className="text-xl font-bold">One-off slot</h2><div className="mt-4 grid gap-3 sm:grid-cols-2"><Sel v={oneOff.coach} set={v => setOneOff({ ...oneOff, coach: v })}><option value="">Any available coach</option>{profiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}</Sel><Sel v={oneOff.branch} set={v=>setOneOff({...oneOff,branch:v,sessionLabel:v==="Primark Cainta"?"Strength & Conditioning":oneOff.sessionLabel})}>{BRANCH_IDS.map(b=><option key={b} value={b}>{b}</option>)}</Sel><div><Sel v={oneOff.sessionLabel} set={v => setOneOff({ ...oneOff, sessionLabel: v })}>{availableServices(oneOff.branch).map(item => <option key={item.label} value={item.label}>{item.label}</option>)}</Sel><p className="mt-1 text-[11px] text-white/40">Package category: {categoryForSessionLabel(oneOff.sessionLabel)}</p></div><Inp v={oneOff.start} set={v => setOneOff({ ...oneOff, start: v })} type="datetime-local"/><Inp v={oneOff.duration} set={v => setOneOff({ ...oneOff, duration: v })} ph="Duration minutes"/><Inp v={oneOff.capacity} set={v => setOneOff({ ...oneOff, capacity: v })} ph="Capacity"/></div><button disabled={working === "oneoff"} className="mt-4 rounded-xl bg-[#ff7a1a] px-4 py-3 font-bold">Create one-off slot</button></form>
+      <form onSubmit={createRecurring} className="rounded-[24px] border border-white/10 bg-[#141414] p-5"><h2 className="text-xl font-bold">Recurring availability</h2><p className="text-xs text-white/45">Creates slots for the next 8 weeks.</p><div className="mt-4 grid gap-3 sm:grid-cols-2"><Sel v={recurring.coach} set={v => setRecurring({ ...recurring, coach: v })}>{profiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}</Sel><Sel v={recurring.branch} set={v=>setRecurring({...recurring,branch:v,sessionLabel:v==="Primark Cainta"?"Strength & Conditioning":recurring.sessionLabel})}>{BRANCH_IDS.map(b=><option key={b} value={b}>{b}</option>)}</Sel><div><Sel v={recurring.sessionLabel} set={v => setRecurring({ ...recurring, sessionLabel: v,capacity:v==="Cardio"?"1":v==="Strength & Conditioning"?"3":recurring.capacity })}>{availableServices(recurring.branch).map(item => <option key={item.label} value={item.label}>{item.label}</option>)}</Sel><p className="mt-1 text-[11px] text-white/40">Package category: {categoryForSessionLabel(recurring.sessionLabel)}</p></div><Sel v={recurring.weekday} set={v => setRecurring({ ...recurring, weekday: v })}>{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d, i) => <option key={d} value={i}>{d}</option>)}</Sel><Inp v={recurring.start} set={v => setRecurring({ ...recurring, start: v })} type="time"/><Inp v={recurring.end} set={v => setRecurring({ ...recurring, end: v })} type="time"/><Inp v={recurring.duration} set={v => setRecurring({ ...recurring, duration: v })} ph="Duration minutes"/><Inp v={recurring.capacity} set={v => setRecurring({ ...recurring, capacity: v })} ph="Capacity"/><Inp v={recurring.validFrom} set={v => setRecurring({ ...recurring, validFrom: v })} type="date"/><Inp v={recurring.validUntil} set={v => setRecurring({ ...recurring, validUntil: v })} type="date"/></div><button disabled={working === "recurring"} className="mt-4 rounded-xl bg-[#ff7a1a] px-4 py-3 font-bold">Save recurring rule</button></form>
+      <form onSubmit={createOneOff} className="rounded-[24px] border border-white/10 bg-[#141414] p-5"><h2 className="text-xl font-bold">One-off slot</h2><div className="mt-4 grid gap-3 sm:grid-cols-2"><Sel v={oneOff.coach} set={v => setOneOff({ ...oneOff, coach: v })}><option value="">Any available coach</option>{profiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}</Sel><Sel v={oneOff.branch} set={v=>setOneOff({...oneOff,branch:v,sessionLabel:v==="Primark Cainta"?"Strength & Conditioning":oneOff.sessionLabel})}>{BRANCH_IDS.map(b=><option key={b} value={b}>{b}</option>)}</Sel><div><Sel v={oneOff.sessionLabel} set={v => setOneOff({ ...oneOff, sessionLabel: v,capacity:v==="Cardio"?"1":v==="Strength & Conditioning"?"3":oneOff.capacity })}>{availableServices(oneOff.branch).map(item => <option key={item.label} value={item.label}>{item.label}</option>)}</Sel><p className="mt-1 text-[11px] text-white/40">Package category: {categoryForSessionLabel(oneOff.sessionLabel)}</p></div><Inp v={oneOff.start} set={v => setOneOff({ ...oneOff, start: v })} type="datetime-local"/><Inp v={oneOff.duration} set={v => setOneOff({ ...oneOff, duration: v })} ph="Duration minutes"/><Inp v={oneOff.capacity} set={v => setOneOff({ ...oneOff, capacity: v })} ph="Capacity"/></div><button disabled={working === "oneoff"} className="mt-4 rounded-xl bg-[#ff7a1a] px-4 py-3 font-bold">Create one-off slot</button></form>
     </section>
 
     <form onSubmit={createAssignment} className="mb-6 rounded-[24px] border border-white/10 bg-[#141414] p-5"><h2 className="text-xl font-bold">Assign member directly</h2><p className="text-xs text-white/45">Staff assignments confirm immediately, but package and capacity checks still apply.</p><div className="mt-4 grid gap-3 md:grid-cols-[1fr_2fr_auto]"><Sel v={assignment.memberId} set={v => setAssignment({ ...assignment, memberId: v })}><option value="">Select member</option>{members.map(m => <option key={m.id} value={m.id}>{m.member_code} · {m.full_name}</option>)}</Sel><Sel v={assignment.slotId} set={v => setAssignment({ ...assignment, slotId: v })}><option value="">Select open slot</option>{openSlots.map(s => <option key={s.id} value={s.id}>{fmt(s.start_at)} · {displaySessionLabel(s.session_label, s.session_type)} · {s.branch}</option>)}</Sel><button disabled={working === "assignment" || !assignment.memberId || !assignment.slotId} className="rounded-xl bg-[#ff7a1a] px-5 py-3 font-bold">Assign member</button></div></form>
 
     <section className="mb-6 rounded-[24px] border border-white/10 bg-[#141414] p-5"><h2 className="text-xl font-bold">Package attention</h2><p className="text-xs text-white/45">Payment Due · Renewal Soon · Last Session · Expired</p><div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">{attention.length === 0 ? <p className="text-sm text-white/45">No package alerts.</p> : attention.map((a, i) => <div key={`${a.member_id}-${a.reason}-${i}`} className="rounded-2xl bg-white/5 p-4"><b>{a.member_name}</b><div className="text-xs text-white/50">{a.member_code} · {a.package_name}</div><div className="mt-2 text-sm text-orange-300">{a.reason.replaceAll("_", " ")}</div><div className="text-xs text-white/45">{a.sessions_left} sessions left</div></div>)}</div></section>
 
+    {role==="admin"&&<section className="mb-6 rounded-[24px] border border-white/10 bg-[#141414] p-5">
+      <h2 className="text-xl font-bold">Coach booking specializations</h2>
+      <p className="mt-1 text-xs text-white/50">Assign Cardio coaches explicitly. Strength & Conditioning coaches can manage 3 overlapping members; Cardio coaches can manage 1. Changes do not rewrite existing appointments.</p>
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        {coachSpecializations.filter(c=>c.user_id).map(c=><div key={c.id} className="rounded-xl bg-[#242424] p-3">
+          <p className="mb-2 text-sm font-bold">{c.display_name} <span className="font-normal text-white/50">· {c.branch}</span></p>
+          <select aria-label={"Specialization for "+c.display_name} value={c.scheduling_specialization} disabled={working==="specialization:"+c.id} onChange={e=>void updateCoachSpecialization(c.id,e.target.value)} className="w-full rounded-xl border border-white/10 bg-[#171717] p-3 text-sm">
+            <option value="strength_conditioning">Strength & Conditioning · 3 clients/hour</option>
+            <option value="cardio">Cardio · 1 client/hour</option>
+          </select>
+        </div>)}
+      </div>
+      {coachSpecializations.filter(c=>c.user_id).length===0&&<p className="mt-3 text-sm text-amber-300">No linked coaches found. Link the coach accounts first.</p>}
+    </section>}
     <section className="grid gap-6 xl:grid-cols-[1fr_340px]"><div className="rounded-[24px] border border-white/10 bg-[#141414] p-5"><h2 className="text-xl font-bold">Booking requests</h2><div className="mt-4 space-y-3">{bookings.length === 0 ? <p className="text-sm text-white/45">No pending or confirmed bookings.</p> : bookings.map(b => { const m = bookingMember(b); return <div key={b.id} className="rounded-2xl bg-white/5 p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><b>{m?.full_name ?? "Member"}</b><div className="text-xs text-white/45">{m?.member_code} · {displaySessionLabel(b.session_label, b.session_type)} · {fmt(b.start_at ?? b.requested_start_at)}</div><div className="mt-1 text-xs text-white/35">{b.request_kind === "custom" ? "Custom request" : b.request_kind === "staff_assignment" ? "Staff assignment" : "Available slot request"}</div></div><span className="text-xs uppercase text-orange-300">{b.status}</span></div>
       <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]"><Sel v={bookingCoach[b.id] ?? b.assigned_coach_user_id ?? b.requested_coach_user_id ?? ""} set={v => setBookingCoach({ ...bookingCoach, [b.id]: v })}><option value="">Choose coach / Any available coach</option>{profiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}</Sel>{b.status === "confirmed" && <button disabled={working === b.id || !bookingCoach[b.id]} onClick={() => void reassignCoach(b)} className="rounded-lg bg-blue-500/20 px-3 py-2 text-xs">Reassign coach</button>}</div>
       {b.status === "pending" ? <div className="mt-3 flex gap-2"><button disabled={working === b.id} onClick={() => void act(b, "confirm")} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold">Confirm</button><button onClick={() => void act(b, "reject")} className="rounded-lg bg-red-500/20 px-3 py-2 text-xs">Reject</button></div> : <div className="mt-3 flex flex-wrap items-center gap-2"><button onClick={() => void act(b, "cancel")} className="rounded-lg bg-red-500/20 px-3 py-2 text-xs">Cancel</button><label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={!!chargeNoShow[b.id]} onChange={e => setChargeNoShow({ ...chargeNoShow, [b.id]: e.target.checked })}/>Charge 1 session</label><button onClick={() => void act(b, "noshow")} className="rounded-lg bg-amber-500/20 px-3 py-2 text-xs">Mark no-show</button></div>}
