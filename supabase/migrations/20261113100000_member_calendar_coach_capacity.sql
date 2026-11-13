@@ -88,7 +88,7 @@ where (select auth.uid()) is not null
     c.scheduling_specialization=case when s.session_label='Cardio' then 'cardio' else 'strength_conditioning' end)
 order by s.start_at,c.display_name,s.id
 limit 500;
-$$;
+$bearfit$;
 revoke all on function public.member_calendar_slots(date) from public,anon;
 grant execute on function public.member_calendar_slots(date) to authenticated;
 
