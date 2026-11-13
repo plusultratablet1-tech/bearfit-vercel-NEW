@@ -99,10 +99,10 @@ export async function loadMemberAccountData(userId: string): Promise<MemberAccou
       .from("bookings")
       .select("*")
       .eq("member_id", member.id)
-      .eq("status", "confirmed")
-      .gte("start_at", new Date().toISOString())
-      .order("start_at", { ascending: true })
-      .limit(3),
+      .in("status", ["pending", "confirmed"])
+      .gte("requested_start_at", new Date().toISOString())
+      .order("requested_start_at", { ascending: true })
+      .limit(20),
     supabase.rpc("member_bearforce_summary"),
     supabase.rpc("member_coach_directory"),
     eligibilityPromise,
