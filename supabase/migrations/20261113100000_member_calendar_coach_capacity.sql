@@ -32,7 +32,7 @@ begin
     if not exists (
       select 1 from public.coaches c where c.user_id=new.coach_user_id
         and c.is_active and not coalesce(c.is_demo,false) and c.branch=new.branch
-        and c.scheduling_specialization=case when new.session_label='Cardio' then 'cardio' else 'strength_conditioning' end
+        and c.scheduling_specialization=(case when new.session_label='Cardio' then 'cardio' else 'strength_conditioning' end)
     ) then raise exception 'Coach specialization or branch does not match the session'; end if;
   end if;
   return new;
@@ -85,7 +85,7 @@ where (select auth.uid()) is not null
   and s.start_at >= date_trunc('month',p_month::timestamp) at time zone 'Asia/Manila'
   and s.start_at < (date_trunc('month',p_month::timestamp)+interval '1 month') at time zone 'Asia/Manila'
   and (s.session_label not in ('Strength & Conditioning','Cardio') or
-    c.scheduling_specialization=case when s.session_label='Cardio' then 'cardio' else 'strength_conditioning' end)
+    c.scheduling_specialization=(case when s.session_label='Cardio' then 'cardio' else 'strength_conditioning' end))
 order by s.start_at,c.display_name,s.id
 limit 500;
 $bearfit$;
@@ -146,7 +146,7 @@ begin
       select 1 from public.coaches c
       where c.user_id=v_coach and c.is_active and not coalesce(c.is_demo,false)
         and c.branch=v_slot.branch
-        and c.scheduling_specialization=case when v_slot.session_label='Cardio' then 'cardio' else 'strength_conditioning' end
+        and c.scheduling_specialization=(case when v_slot.session_label='Cardio' then 'cardio' else 'strength_conditioning' end)
     ) then raise exception 'Choose an active % coach at this branch', v_slot.session_label; end if;
   end if;
   -- A member cannot confirm overlapping appointments with different coaches.
@@ -166,7 +166,7 @@ begin
     select count(*) from public.bookings b where b.assigned_coach_user_id=v_coach
       and b.status='confirmed' and b.id<>v_booking.id
       and pg_catalog.tstzrange(b.start_at,b.end_at,'[)') && pg_catalog.tstzrange(v_slot.start_at,v_slot.end_at,'[)')
-  ) >= case when v_slot.session_label='Strength & Conditioning' then 3 else 1 end
+  ) >= (case when v_slot.session_label='Strength & Conditioning' then 3 else 1 end)
   then raise exception 'Coach has reached the limit for this hour'; end if;
 
   v_elig:=private.package_eligibility(v_member.id,v_slot.session_type);
@@ -229,12 +229,12 @@ begin
   end if;
   -- The current taxonomy includes Strength & Conditioning, while the older
   -- private helper does not. Keep the workaround scoped to this new RPC.
-  v_type := case when btrim(coalesce(p_session_label,'')) = 'Strength & Conditioning'
-    then 'fitness' else private.session_label_category(p_session_label) end;
+  v_type := (case when btrim(coalesce(p_session_label,'')) = 'Strength & Conditioning'
+    then 'fitness' else private.session_label_category(p_session_label) end);
 
   if p_session_label in ('Strength & Conditioning','Cardio')
     and v_coach.scheduling_specialization <>
-      case when p_session_label='Cardio' then 'cardio' else 'strength_conditioning' end
+      case when p_session_label='Cardio' then 'cardio' else 'strength_conditioning' end)
   then raise exception 'This coach is not assigned to the requested training type'; end if;
 
   select * into v_member from public.members
@@ -296,7 +296,7 @@ begin
           coalesce(b.end_at,coalesce(b.start_at,b.requested_start_at)
             + pg_catalog.make_interval(mins=>b.requested_duration_minutes)), '[)'
         ) && pg_catalog.tstzrange(v_start,v_end,'[)')
-    ) >= case when p_session_label='Strength & Conditioning' then 3 else 1 end
+    ) >= (case when p_session_label='Strength & Conditioning' then 3 else 1 end)
     then raise exception 'Coach has reached the limit for this hour'; end if;
 
     insert into public.bookings(
