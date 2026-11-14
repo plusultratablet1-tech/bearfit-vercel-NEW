@@ -104,7 +104,7 @@ export default function StaffSchedulePageClient({ role, currentUserId }: { role:
     let result
     if (action === "confirm") result = await supabase.rpc("staff_confirm_booking", { p_booking_id: booking.id, p_slot_id: booking.slot_id || null, p_assigned_coach_user_id: coachId })
     else if (action === "reject") result = await supabase.rpc("staff_reject_booking", { p_booking_id: booking.id, p_reason: "Declined by staff" })
-    else if (action === "cancel") result = await supabase.rpc("staff_cancel_booking", { p_booking_id: booking.id, p_reason: "Cancelled by staff" })
+    else result = await supabase.rpc("staff_cancel_booking", { p_booking_id: booking.id, p_reason: "Cancelled by staff" })
     setWorking(null); if (result.error) return setError(result.error.message)
     setSuccess(`Booking ${action} action completed.`); await load()
   }
