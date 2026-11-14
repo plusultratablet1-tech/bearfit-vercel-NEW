@@ -1,6 +1,7 @@
 "use client"
 
 import {useEffect,useMemo,useState,type FormEvent} from "react"
+import Link from "next/link"
 import {useRouter} from "next/navigation"
 import {CalendarDays,ChevronLeft,ChevronRight,Clock3,Users} from "lucide-react"
 import MemberAppShell from "@/components/bearfit/MemberAppShell"
@@ -125,6 +126,7 @@ export default function MemberSchedulePageClient({initialData}:{initialData:Memb
         <p className="text-xs font-bold uppercase tracking-[.18em] text-orange-300">Member Schedule</p>
         <h1 className="mt-1 text-3xl font-extrabold">Your training calendar</h1>
         <p className="mt-2 text-sm text-white/55">Home branch: <b className="text-white">{initialData.member?.branch}</b> · Requests require at least 24 hours' notice · All times Philippines</p>
+        <Link href="/member/freeze" className="mt-3 inline-flex rounded-xl border border-orange-400/30 bg-orange-400/10 px-4 py-2 text-sm font-bold text-orange-200 hover:bg-orange-400/20">Request Package Freeze / Extension</Link>
       </header>
       {error&&<p role="alert" className="mb-4 rounded-2xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-200">{error}</p>}
       {success&&<p role="status" className="mb-4 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-4 text-sm text-emerald-200">{success}</p>}
