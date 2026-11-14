@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import type { ReactNode } from "react"
+import {useEffect,useState,type ReactNode} from "react"
 import {
   Bell,
   CalendarDays,
@@ -33,6 +33,14 @@ type Props = {
 export default function MemberPersistentShell({ children }: Props) {
   const activePath = usePathname()
   const router=useRouter()
+  const [unreviewedCharges,setUnreviewedCharges]=useState(0)
+  useEffect(()=>{
+    let mounted=true
+    void supabase.from("booking_no_show_cases").select("id",{count:"exact",head:true})
+      .eq("status","charged").is("member_acknowledged_at",null)
+      .then(({count,error})=>{if(mounted&&!error)setUnreviewedCharges(count??0)})
+    return ()=>{mounted=false}
+  },[activePath])
   // Preload likely next tabs, then expand to any destination on user intent.
   // Access to all prefetched routes is still enforced server-side.
 
@@ -96,9 +104,9 @@ export default function MemberPersistentShell({ children }: Props) {
           </nav>
 
           <div className="space-y-1 border-t border-white/10 p-3">
-            <button type="button" title="Notifications coming soon" className="flex w-full cursor-default items-center gap-3 rounded-xl px-4 py-3 text-sm text-white/45">
-              <Bell size={17} /> Notifications
-            </button>
+            <Link href="/member/no-shows" className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm text-white/75 hover:bg-white/5">
+              <Bell size={17} /> Session notices {unreviewedCharges>0&&<span className="ml-auto rounded-full bg-orange-500 px-2 py-0.5 text-xs font-bold">{unreviewedCharges}</span>}
+            </Link>
             <button type="button" title="Messages coming soon" className="flex w-full cursor-default items-center gap-3 rounded-xl px-4 py-3 text-sm text-white/45">
               <MessageCircle size={17} /> Messages
             </button>
@@ -112,7 +120,12 @@ export default function MemberPersistentShell({ children }: Props) {
           </div>
         </aside>
 
-        <section className="min-w-0 flex-1">{children}</section>
+        <section className="min-w-0 flex-1">
+          {unreviewedCharges>0&&<Link href="/member/no-shows" className="mx-4 mt-4 block rounded-xl border border-orange-400/30 bg-orange-400/10 px-4 py-3 text-sm font-semibold text-orange-100 md:mx-6">
+            You have {unreviewedCharges} no-show session charge{unreviewedCharges===1?"":"s"} to review. Acknowledge receipt or dispute an incorrect charge.
+          </Link>}
+          {children}
+        </section>
 
         <nav
           aria-label="Mobile app navigation"
