@@ -74,3 +74,11 @@ test("Overlapping member attendance blocks incorrect Admin no-show deductions",(
  assert.match(sql,/Possible member attendance exists during this slot/)
  assert.match(sql,/s\.trained_at between/)
 })
+
+test("Previously accepted policy cannot be imposed retroactively",()=>{
+ const patch=readFileSync("supabase/migrations/20261114185000_no_show_legacy_cutoff_hardening.sql","utf8")
+ assert.match(patch,/existing free-cancellation entitlement/)
+ assert.match(patch,/The 10 PM deadline already passed/)
+ assert.match(patch,/v_cutoff:=coalesce\(v_b.start_at,v_b.requested_start_at\)-interval '4 hours'/)
+ assert.doesNotMatch(patch,/update public\.member_package_cycles/)
+})
