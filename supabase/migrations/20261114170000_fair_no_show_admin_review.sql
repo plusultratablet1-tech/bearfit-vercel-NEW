@@ -105,7 +105,12 @@ begin
  if v_booking.status not in ('pending','confirmed') then raise exception 'Booking cannot be cancelled'; end if;
  v_start:=coalesce(v_booking.start_at,v_booking.requested_start_at);
  if v_booking.status='confirmed' then
-   v_cutoff:=(((v_start at time zone 'Asia/Manila')::date::timestamp - interval '2 hours') at time zone 'Asia/Manila');
+   if exists(select 1 from public.booking_policy_acceptances t where t.booking_id=v_booking.id) then
+     v_cutoff:=(((v_start at time zone 'Asia/Manila')::date::timestamp - interval '2 hours') at time zone 'Asia/Manila');
+   else
+     -- Legacy bookings never opted into stricter terms: retain their original 4h cutoff.
+     v_cutoff:=v_start-interval '4 hours';
+   end if;
    if now()>v_cutoff then return jsonb_build_object('booking_id',v_booking.id,'status',v_booking.status,
      'staff_contact_required',true,'late_cancellation',true,'cutoff_at',v_cutoff); end if;
  end if;
