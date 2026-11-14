@@ -22,6 +22,14 @@ function dateKey(iso:string){
   return part("year")+"-"+part("month")+"-"+part("day")
 }
 function philippineNow(){return dateKey(new Date().toISOString())}
+function cutoffForBooking(start:string,consent:boolean){
+  const date=new Date(start)
+  if(!consent)return new Date(date.getTime()-4*60*60*1000).toISOString()
+  const localDay=dateKey(start)
+  const prior=new Date(localDay+"T12:00:00Z")
+  prior.setUTCDate(prior.getUTCDate()-1)
+  return prior.toISOString().slice(0,10)+"T22:00:00+08:00"
+}
 function fmt(iso:string){return new Intl.DateTimeFormat("en-PH",{timeZone:zone,month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}).format(new Date(iso))}
 function time(iso:string){return new Intl.DateTimeFormat("en-PH",{timeZone:zone,hour:"numeric",minute:"2-digit"}).format(new Date(iso))}
 function monthLabel(month:string){return new Intl.DateTimeFormat("en-PH",{month:"long",year:"numeric",timeZone:"UTC"}).format(new Date(month+"-01T00:00:00Z"))}
@@ -235,7 +243,7 @@ export default function MemberSchedulePageClient({initialData}:{initialData:Memb
             <p className="mt-1 text-xs text-white/50">Pending requests need Admin confirmation. For sessions with accepted new terms, free cancellation closes at 10:00 PM the night before; older bookings retain their original four-hour window.</p>
             <div className="mt-4 space-y-3">{upcoming.length===0?<p className="text-sm text-white/45">No pending or confirmed bookings this month.</p>:upcoming.map(b=><article key={b.id} className="rounded-2xl bg-white/5 p-4">
               <div className="flex items-start justify-between gap-2"><b className="text-sm">{displaySessionLabel(b.session_label,b.session_type)}</b><span className="text-xs uppercase text-orange-300">{b.status}</span></div>
-              <p className="mt-2 text-sm text-white/55">{fmt(b.start_at??b.requested_start_at)}</p>
+              <p className="mt-2 text-sm text-white/55">{fmt(b.start_at??b.requested_start_at)}</p><p className="mt-1 text-xs text-amber-100">Free cancellation cutoff: {fmt(cutoffForBooking(b.start_at??b.requested_start_at,Boolean(acceptedTerms[b.id])))} Philippine time {acceptedTerms[b.id]?"(new policy)":"(original booking rule)"}</p>
               {b.status==="confirmed"&&<div className="mt-2">
                  <p className="text-xs text-white/50">{acceptedTerms[b.id]?"Policy accepted · "+fmt(acceptedTerms[b.id]):"No new-policy consent recorded for this booking"}</p>
                  <button disabled={working===b.id} type="button" onClick={()=>void confirmTerms(b)} className="mt-2 rounded-lg border border-orange-400/20 px-3 py-2 text-xs font-bold text-orange-200">Confirm booking & penalty terms</button>
