@@ -9,7 +9,7 @@ import {createClient} from "@/lib/supabase/client"
 const supabase=createClient()
 const timeZone="Asia/Manila"
 type Cycle={id:string;status:string;starts_at:string|null;expires_at:string|null;
-  sessions_left:number;package_definitions:{name:string;validity_days:number|null}|null}
+  sessions_left:number;package_definitions:{name:string;validity_days:number|null}[]}
 type Request={id:string;reason:string;start_date:string;end_date:string;
   status:string;requested_at:string;decision_note:string|null;
   approved_days:number|null;revised_expires_at:string|null;member_package_id:string}
@@ -86,7 +86,7 @@ export default function MemberFreezeClient({userId,memberName,cycles,requests,lo
           <form onSubmit={submit} className="mt-5 grid gap-4">
             <label className="text-sm font-semibold">Package
               <select required value={cycle} onChange={e=>setCycle(e.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-[#1c2537] px-4 py-3">
-                {eligible.map(c=><option key={c.id} value={c.id}>{c.package_definitions?.name??"Training package"} · Expires {fmt(c.expires_at)} · {c.sessions_left} sessions left</option>)}
+                {eligible.map(c=><option key={c.id} value={c.id}>{c.package_definitions?.[0]?.name??"Training package"} · Expires {fmt(c.expires_at)} · {c.sessions_left} sessions left</option>)}
               </select>
             </label>
             <label className="text-sm font-semibold">Reason
