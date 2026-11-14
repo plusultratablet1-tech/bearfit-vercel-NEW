@@ -74,3 +74,9 @@ test("Overlapping member attendance blocks incorrect Admin no-show deductions",(
  assert.match(sql,/Possible member attendance exists during this slot/)
  assert.match(sql,/s\.trained_at between/)
 })
+
+test("Policy cannot be retroactively imposed after the 10 PM cutoff",()=>{
+ assert.match(sql,/existing free-cancellation entitlement/)
+ assert.match(sql,/The 10 PM deadline already passed/)
+ assert.match(sql,/v_cutoff:=coalesce\(v_b.start_at,v_b.requested_start_at\)-interval '4 hours'/)
+});
