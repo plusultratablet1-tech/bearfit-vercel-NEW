@@ -4,6 +4,7 @@ import Link from "next/link"
 import {useMemo,useState} from "react"
 import {UsersRound,AlertTriangle,CheckCircle2,Clock3,Search,ChevronRight,ChevronLeft,Grid2X2,LayoutList,RefreshCw,Wallet,AlertCircle} from "lucide-react"
 import StaffAppShell from "@/components/bearfit/StaffAppShell"
+import ActiveMemberBulkProvision from "./ActiveMemberBulkProvision"
 import {
   compareMembers, hasLowSessions, isActiveMember, matchesMemberView,
   memberAction, memberDisplayName, memberPackage, memberStats, membershipState,
@@ -12,7 +13,7 @@ import {
 } from "@/lib/member-control-center"
 
 export type MemberDirectoryItem=MemberDirectoryRecord & {
- last_paid_at:string|null;last_paid_amount:number|null;total_paid:number|null
+ last_paid_at:string|null;last_paid_amount:number|null;total_paid:number|null;user_id:string|null
 }
 type GroupBy="none"|"branch"|"coach"|"package"|"sessions"
 type Layout="table"|"cards"
@@ -133,6 +134,7 @@ export default function StaffMembersPageClient({
  const packages=useMemo(()=>[...new Set(initialMembers.map(memberPackage))].sort(),[initialMembers])
  const statuses=useMemo(()=>[...new Set(initialMembers.map(m=>membershipState(m)))].sort(),[initialMembers])
  const stats=useMemo(()=>memberStats(initialMembers),[initialMembers])
+ const bulkTargets=useMemo(()=>initialMembers.filter(m=>m.branch==="Malingap Branch" && m.is_demo===false && m.status==="active" && m.membership_status==="active" && !m.user_id && typeof m.member_code==="string" && /^M[0-9]{4,6}$/.test(m.member_code)).map(m=>({id:m.id,code:m.member_code??"",name:memberDisplayName(m)})),[initialMembers])
  const filtered=useMemo(()=>{
   const needle=search.trim().toLowerCase()
   return initialMembers.filter(m=>{
@@ -174,6 +176,8 @@ export default function StaffMembersPageClient({
    {loadError&&<p role="alert" className="rounded-xl border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-200">
     Unable to load member data completely: {loadError}. Dashboard totals may be incomplete.
    </p>}
+
+   {role==="admin"&&!loadError&&<ActiveMemberBulkProvision members={bulkTargets}/>}
 
    <section aria-label="Members summary" className="grid grid-cols-2 gap-3 xl:grid-cols-5">
     <Overview icon={UsersRound} title="Members" count={stats.total}/>
