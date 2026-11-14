@@ -110,6 +110,7 @@ export default function AdminFreezesClient({initialRequests,loadError}:{
         <p className="text-xs font-bold uppercase tracking-[.2em] text-orange-300">Admin only · Package Control</p>
         <h1 className="mt-1 text-3xl font-black">Freeze & Extension Approvals</h1>
         <p className="mt-2 text-sm text-white/55">No proof, no approval. One approved freeze per package. The system enforces dates, limits, bookings and audit history.</p>
+        <Link href="/staff/freezes/verify" className="mt-4 inline-flex rounded-xl border border-orange-400/30 bg-orange-400/10 px-4 py-2 text-sm font-bold text-orange-200">Verify Missing Original Package Dates</Link>
       </header>
       {error&&<p role="alert" className="mt-4 rounded-xl bg-red-500/10 p-4 text-red-200">{error}</p>}
       {notice&&<p role="status" className="mt-4 rounded-xl bg-green-500/10 p-4 text-green-200">{notice}</p>}
