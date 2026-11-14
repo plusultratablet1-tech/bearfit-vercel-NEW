@@ -15,6 +15,8 @@ type CalendarSlot = {
   capacity:number;booked:number;remaining:number
 }
 const supabase=createClient()
+type FinalAck={booking_id:string;final_schedule_revision:number;start_at:string;end_at:string;coach_user_id:string;branch:string;session_type:string;session_label:string|null;slot_id:string|null;confirmed_at:string}
+type BookingNotice={id:string;booking_id:string;event_type:string;event_at:string;detail:string|null;previous_state:unknown;new_state:unknown}
 const zone="Asia/Manila"
 function dateKey(iso:string){
   const parts=new Intl.DateTimeFormat("en-CA",{timeZone:zone,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date(iso))
@@ -52,6 +54,9 @@ export default function MemberSchedulePageClient({initialData}:{initialData:Memb
   const [working,setWorking]=useState<string|null>(null)
   const [policyAccepted,setPolicyAccepted]=useState(false)
   const [acceptedTerms,setAcceptedTerms]=useState<Record<string,string>>({})
+  const [finalAcks,setFinalAcks]=useState<FinalAck[]>([])
+  const [bookingNotices,setBookingNotices]=useState<BookingNotice[]>([])
+  const [showTenNotices,setShowTenNotices]=useState(false)
   const [customOpen,setCustomOpen]=useState(false)
   const [custom,setCustom]=useState({sessionLabel:"Strength & Conditioning",start:"",coach:"",duration:"60"})
   const [reload,setReload]=useState(0)
@@ -66,17 +71,21 @@ export default function MemberSchedulePageClient({initialData}:{initialData:Memb
       supabase.rpc("member_calendar_slots",{p_month:month+"-01"}),
       supabase.from("bookings").select("*").gte("requested_start_at",new Date(first).toISOString()).lt("requested_start_at",new Date(last).toISOString()).order("requested_start_at").limit(200),
       supabase.from("booking_policy_acceptances").select("booking_id,accepted_at").limit(200),
-    ]).then(([slotsResult,bookingsResult,termsResult])=>{
+      supabase.from("booking_final_confirmations").select("booking_id,final_schedule_revision,start_at,end_at,coach_user_id,branch,session_type,session_label,slot_id,confirmed_at").order("confirmed_at",{ascending:false}).limit(200),
+      supabase.from("booking_operational_events").select("id,booking_id,event_type,event_at,detail,previous_state,new_state").order("event_at",{ascending:false}).limit(100),
+    ]).then(([slotsResult,bookingsResult,termsResult,finalResult,eventsResult])=>{
       if(!active)return
       setLoading(false)
-      if(slotsResult.error||bookingsResult.error){
-        setError(slotsResult.error?.message??bookingsResult.error?.message??"Calendar unavailable.")
+      if(slotsResult.error||bookingsResult.error||finalResult.error||eventsResult.error){
+        setError(slotsResult.error?.message??bookingsResult.error?.message??finalResult.error?.message??eventsResult.error?.message??"Calendar unavailable.")
       }else{
         setError(null)
       }
       setCalendarSlots((slotsResult.data??[]) as CalendarSlot[])
       setMonthBookings((bookingsResult.data??[]) as BookingRow[])
       setAcceptedTerms(Object.fromEntries((termsResult.data??[]).map(t=>[t.booking_id,t.accepted_at])))
+      setFinalAcks((finalResult.data??[]) as FinalAck[])
+      setBookingNotices((eventsResult.data??[]) as BookingNotice[])
     }).catch(()=>{
       if(active){setLoading(false);setError("Unable to load this month's schedule.")}
     })
@@ -94,6 +103,12 @@ export default function MemberSchedulePageClient({initialData}:{initialData:Memb
   const upcoming=useMemo(()=>monthBookings.filter(b=>b.status==="pending"||b.status==="confirmed"),[monthBookings])
   const tomorrow=dateKey(new Date(Date.now()+24*60*60*1000).toISOString())
   const reminders=upcoming.filter(b=>b.status==="confirmed"&&dateKey(b.start_at??b.requested_start_at)===tomorrow)
+  const currentAck=(b:BookingRow)=>finalAcks.find(a=>
+    a.booking_id===b.id&&a.final_schedule_revision===((b as BookingRow&{final_schedule_revision?:number}).final_schedule_revision??0)
+    &&a.start_at===b.start_at&&a.end_at===b.end_at&&a.coach_user_id===b.assigned_coach_user_id
+    &&a.branch===b.branch&&a.session_type===b.session_type&&a.session_label===b.session_label&&a.slot_id===b.slot_id)
+  const unconfirmed=upcoming.filter(b=>b.status==="confirmed"&&!currentAck(b))
+  const coachName=(b:BookingRow)=>initialData.coaches.find(c=>c.id===b.assigned_coach_user_id)?.full_name??"Assigned coach (confirm with Admin)"
 
   function moveMonth(offset:number){
     const next=nextMonth(month,offset)
@@ -144,14 +159,15 @@ export default function MemberSchedulePageClient({initialData}:{initialData:Memb
     setSuccess("Booking cancelled.");setReload(v=>v+1);router.refresh()
   }
 
-  async function confirmTerms(b:BookingRow){
+  async function confirmFinalBooking(b:BookingRow){
+    if(!window.confirm("Confirm the FINAL assigned date, time, coach, branch and booking terms displayed here? Any subsequent change requires a fresh acknowledgment."))return
     setWorking(b.id);setError(null);setSuccess(null)
-    const {error:termsError}=await supabase.rpc("member_accept_booking_no_show_terms",{p_booking_id:b.id})
+    const {data,error:e}=await supabase.rpc("member_confirm_final_booking",{p_booking_id:b.id})
     setWorking(null)
-    if(termsError){setError(termsError.message);return}
-    setAcceptedTerms(old=>({...old,[b.id]:new Date().toISOString()}))
-    setSuccess("Booking cancellation and no-show rules acknowledged. Your confirmation is recorded.")
-    router.refresh()
+    if(e){setError(e.message);return}
+    const info=data as {message?:string}|null
+    setSuccess(info?.message??"Final booking schedule acknowledged. No session deducted.")
+    setReload(v=>v+1);router.refresh()
   }
 
   return <MemberAppShell activePath="/member/schedule">
@@ -171,6 +187,18 @@ export default function MemberSchedulePageClient({initialData}:{initialData:Memb
       {reminders.length>0&&<div className="mb-4 rounded-2xl border border-amber-300/30 bg-amber-300/10 p-4 text-sm text-amber-100">
         Reminder: {reminders.length} confirmed session{reminders.length===1?"":"s"} tomorrow. Free cancellation ends at 10:00 PM tonight for bookings under the new policy. Open your bookings below to cancel or confirm terms.
       </div>}
+      {unconfirmed.length>0&&<div className="mb-4 rounded-2xl border border-orange-400/30 bg-orange-400/10 p-4 text-sm text-orange-100">
+        <b>Action required:</b> {unconfirmed.length} confirmed session{unconfirmed.length===1?" awaits":"s await"} your FINAL schedule acknowledgment. Review the assigned coach/time and tap Confirm Final Schedule below. Admin cannot charge a no-show without the final acknowledgment.
+      </div>}
+      {bookingNotices.length>0&&<section className="mb-5 rounded-2xl border border-white/10 bg-[#141414] p-4">
+        <h2 className="text-base font-bold">Booking changes & cancellation notices</h2>
+        <p className="mt-1 text-xs text-white/50">In-app notices only; SMS and email delivery are not enabled.</p>
+        <div className="mt-3 space-y-2">{bookingNotices.slice(0,showTenNotices?10:3).map(n=><div key={n.id} className="rounded-xl border border-white/10 bg-white/[.03] px-3 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-2"><b className="text-sm capitalize text-orange-200">{n.event_type.replaceAll("_"," ")}</b><span className="text-xs text-white/50">{fmt(n.event_at)}</span></div>
+          <p className="mt-1 text-sm text-white/70">{n.detail??"Booking updated by BearFit"}</p>
+        </div>)}</div>
+        {bookingNotices.length>3&&<button type="button" onClick={()=>setShowTenNotices(v=>!v)} className="mt-3 text-xs font-bold text-orange-300">{showTenNotices?"Show 3":"Show 10"}</button>}
+      </section>}
       {error&&<p role="alert" className="mb-4 rounded-2xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-200">{error}</p>}
       {success&&<p role="status" className="mb-4 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-4 text-sm text-emerald-200">{success}</p>}
       <section className="mb-6 grid gap-3 md:grid-cols-3" aria-label="Package balances">
@@ -244,9 +272,17 @@ export default function MemberSchedulePageClient({initialData}:{initialData:Memb
             <div className="mt-4 space-y-3">{upcoming.length===0?<p className="text-sm text-white/45">No pending or confirmed bookings this month.</p>:upcoming.map(b=><article key={b.id} className="rounded-2xl bg-white/5 p-4">
               <div className="flex items-start justify-between gap-2"><b className="text-sm">{displaySessionLabel(b.session_label,b.session_type)}</b><span className="text-xs uppercase text-orange-300">{b.status}</span></div>
               <p className="mt-2 text-sm text-white/55">{fmt(b.start_at??b.requested_start_at)}</p><p className="mt-1 text-xs text-amber-100">Free cancellation cutoff: {fmt(cutoffForBooking(b.start_at??b.requested_start_at,Boolean(acceptedTerms[b.id])))} Philippine time {acceptedTerms[b.id]?"(new policy)":"(original booking rule)"}</p>
-              {b.status==="confirmed"&&<div className="mt-2">
-                 <p className="text-xs text-white/50">{acceptedTerms[b.id]?"Policy accepted · "+fmt(acceptedTerms[b.id]):"No new-policy consent recorded for this booking"}</p>
-                 <button disabled={working===b.id} type="button" onClick={()=>void confirmTerms(b)} className="mt-2 rounded-lg border border-orange-400/20 px-3 py-2 text-xs font-bold text-orange-200">Confirm booking & penalty terms</button>
+              {b.status==="confirmed"&&<div className="mt-3 rounded-xl border border-white/10 bg-[#191919] p-3">
+                 <p className="text-xs text-white/70"><b>Final assigned coach:</b> {coachName(b)}</p>
+                 <p className="mt-1 text-xs text-white/60">Branch: {b.branch} · {displaySessionLabel(b.session_label,b.session_type)}</p>
+                 <p className={"mt-2 text-xs font-semibold "+(currentAck(b)?"text-emerald-300":"text-amber-300")}>
+                   {currentAck(b)?"Final schedule acknowledged · "+fmt(currentAck(b)!.confirmed_at):"Awaiting your final schedule acknowledgment"}
+                 </p>
+                 <p className="mt-1 text-xs text-white/50">{acceptedTerms[b.id]?"Cancellation terms accepted":"Original cancellation rights remain unless the new terms are validly accepted"}</p>
+                 {!currentAck(b)&&<button disabled={working===b.id} type="button" onClick={()=>void confirmFinalBooking(b)}
+                   className="mt-3 w-full rounded-lg bg-orange-500 px-3 py-2 text-xs font-bold text-white disabled:opacity-40">
+                   {working===b.id?"Recording…":"Confirm Final Schedule & Terms"}
+                 </button>}
                </div>}
                <button disabled={working===b.id} onClick={()=>void cancelBooking(b)} className="mt-3 block text-xs font-bold text-red-300">Cancel / change</button>
             </article>)}</div>
