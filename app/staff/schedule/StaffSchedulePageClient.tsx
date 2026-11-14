@@ -1,6 +1,7 @@
 "use client"
 
 import StaffAppShell from "@/components/bearfit/StaffAppShell"
+import Link from "next/link"
 import CoachScheduleFeedbackInbox from "./CoachScheduleFeedbackInbox"
 import { useEffect, useState, type FormEvent } from "react"
 import { createClient } from "@/lib/supabase/client"
@@ -13,7 +14,7 @@ type CoachSpecialization = {id:string;display_name:string;branch:string;scheduli
 type Member = { id: string; member_code: string; full_name: string; branch: string }
 type Slot = { id: string; coach_user_id: string | null; branch: string; session_type: string; session_label: string | null; start_at: string; end_at: string; capacity: number; status: string }
 type MemberJoin = { member_code: string; full_name: string }
-type Booking = { id: string; member_id: string; slot_id: string | null; request_kind: string; status: string; branch: string; session_type: string; session_label: string | null; requested_start_at: string; start_at: string | null; assigned_coach_user_id: string | null; requested_coach_user_id?: string | null; member_package_id: string | null; members?: MemberJoin | MemberJoin[] | null }
+type Booking = { id: string; member_id: string; slot_id: string | null; end_at: string | null; request_kind: string; status: string; branch: string; session_type: string; session_label: string | null; requested_start_at: string; start_at: string | null; assigned_coach_user_id: string | null; requested_coach_user_id?: string | null; member_package_id: string | null; members?: MemberJoin | MemberJoin[] | null }
 type Attention = { member_id: string; member_code: string; member_name: string; package_name: string; service_category: string; sessions_left: number; reason: string; warning_level: string }
 
 function availableServices(branch:string){
@@ -38,7 +39,6 @@ export default function StaffSchedulePageClient({ role, currentUserId }: { role:
   const [success, setSuccess] = useState<string | null>(null)
   const [working, setWorking] = useState<string | null>(null)
   const [bookingCoach, setBookingCoach] = useState<Record<string, string>>({})
-  const [chargeNoShow, setChargeNoShow] = useState<Record<string, boolean>>({})
   const [recurring, setRecurring] = useState({ coach: currentUserId, branch: "Malingap Branch", sessionLabel: "Strength Training", weekday: "1", start: "09:00", end: "12:00", duration: "60", capacity: "3", validFrom: new Date().toISOString().slice(0, 10), validUntil: "" })
   const [oneOff, setOneOff] = useState({ coach: currentUserId, branch: "Malingap Branch", sessionLabel: "Strength Training", start: "", duration: "60", capacity: "3" })
   const [assignment, setAssignment] = useState({ memberId: "", slotId: "" })
@@ -98,16 +98,27 @@ export default function StaffSchedulePageClient({ role, currentUserId }: { role:
     setSuccess("Member assigned and confirmed."); setAssignment({ memberId: "", slotId: "" }); await load()
   }
 
-  async function act(booking: Booking, action: "confirm" | "reject" | "cancel" | "noshow") {
+  async function act(booking: Booking, action: "confirm" | "reject" | "cancel") {
     setWorking(booking.id); setError(null)
     const coachId = bookingCoach[booking.id] || booking.assigned_coach_user_id || booking.requested_coach_user_id || slots.find(s => s.id === booking.slot_id)?.coach_user_id || null
     let result
     if (action === "confirm") result = await supabase.rpc("staff_confirm_booking", { p_booking_id: booking.id, p_slot_id: booking.slot_id || null, p_assigned_coach_user_id: coachId })
     else if (action === "reject") result = await supabase.rpc("staff_reject_booking", { p_booking_id: booking.id, p_reason: "Declined by staff" })
-    else if (action === "cancel") result = await supabase.rpc("staff_cancel_booking", { p_booking_id: booking.id, p_reason: "Cancelled by staff" })
-    else result = await supabase.rpc("staff_mark_no_show", { p_booking_id: booking.id, p_charge_session: !!chargeNoShow[booking.id], p_notes: "Staff no-show action" })
+    else result = await supabase.rpc("staff_cancel_booking", { p_booking_id: booking.id, p_reason: "Cancelled by staff" })
     setWorking(null); if (result.error) return setError(result.error.message)
     setSuccess(`Booking ${action} action completed.`); await load()
+  }
+
+  async function reportAbsence(booking:Booking){
+    const note=window.prompt("Record factual absence evidence (at least 8 characters). This sends a report to Admin; it does NOT deduct a member session.")
+    if(!note)return
+    if(note.trim().length<8){setError("Record at least 8 characters of actual attendance evidence.");return}
+    setWorking(booking.id);setError(null);setSuccess(null)
+    const {error:e}=await supabase.rpc("staff_report_no_show",{p_booking_id:booking.id,p_notes:note.trim()})
+    setWorking(null)
+    if(e){setError(e.message);return}
+    setSuccess("Attendance issue reported for Admin review. No session deducted.")
+    await load()
   }
 
   async function reassignCoach(booking: Booking) {
@@ -149,10 +160,11 @@ export default function StaffSchedulePageClient({ role, currentUserId }: { role:
     </section>}
     <section className="grid gap-6 xl:grid-cols-[1fr_340px]"><div className="rounded-[24px] border border-white/10 bg-[#141414] p-5"><h2 className="text-xl font-bold">Booking requests</h2><div className="mt-4 space-y-3">{bookings.length === 0 ? <p className="text-sm text-white/45">No pending or confirmed bookings.</p> : bookings.map(b => { const m = bookingMember(b); return <div key={b.id} className="rounded-2xl bg-white/5 p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><b>{m?.full_name ?? "Member"}</b><div className="text-xs text-white/45">{m?.member_code} · {displaySessionLabel(b.session_label, b.session_type)} · {fmt(b.start_at ?? b.requested_start_at)}</div><div className="mt-1 text-xs text-white/35">{b.request_kind === "custom" ? "Custom request" : b.request_kind === "staff_assignment" ? "Staff assignment" : "Available slot request"}</div></div><span className="text-xs uppercase text-orange-300">{b.status}</span></div>
       <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]"><Sel v={bookingCoach[b.id] ?? b.assigned_coach_user_id ?? b.requested_coach_user_id ?? ""} set={v => setBookingCoach({ ...bookingCoach, [b.id]: v })}><option value="">Choose coach / Any available coach</option>{profiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}</Sel>{b.status === "confirmed" && <button disabled={working === b.id || !bookingCoach[b.id]} onClick={() => void reassignCoach(b)} className="rounded-lg bg-blue-500/20 px-3 py-2 text-xs">Reassign coach</button>}</div>
-      {b.status === "pending" ? <div className="mt-3 flex gap-2"><button disabled={working === b.id} onClick={() => void act(b, "confirm")} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold">Confirm</button><button onClick={() => void act(b, "reject")} className="rounded-lg bg-red-500/20 px-3 py-2 text-xs">Reject</button></div> : <div className="mt-3 flex flex-wrap items-center gap-2"><button onClick={() => void act(b, "cancel")} className="rounded-lg bg-red-500/20 px-3 py-2 text-xs">Cancel</button><label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={!!chargeNoShow[b.id]} onChange={e => setChargeNoShow({ ...chargeNoShow, [b.id]: e.target.checked })}/>Charge 1 session</label><button onClick={() => void act(b, "noshow")} className="rounded-lg bg-amber-500/20 px-3 py-2 text-xs">Mark no-show</button></div>}
+      {b.status === "pending" ? <div className="mt-3 flex gap-2"><button disabled={working === b.id} onClick={() => void act(b, "confirm")} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold">Confirm</button><button onClick={() => void act(b, "reject")} className="rounded-lg bg-red-500/20 px-3 py-2 text-xs">Reject</button></div> : <div className="mt-3 flex flex-wrap items-center gap-2"><button onClick={() => void act(b, "cancel")} className="rounded-lg bg-red-500/20 px-3 py-2 text-xs">Cancel</button>{b.end_at&&Date.parse(b.end_at)<=Date.now()&&<button disabled={working===b.id} onClick={()=>void reportAbsence(b)} className="rounded-lg bg-amber-500/20 px-3 py-2 text-xs font-semibold text-amber-200">Report absence (no charge)</button>}{role==="admin"&&<Link href="/staff/no-shows" className="rounded-lg bg-amber-500/20 px-3 py-2 text-xs font-semibold text-amber-200">Admin review queue</Link>}</div>}
     </div> })}</div></div>
       <aside className="rounded-[24px] border border-white/10 bg-[#141414] p-5"><h2 className="text-xl font-bold">Upcoming slots</h2><div className="mt-4 space-y-3">{slots.slice(0, 12).map(s => <div key={s.id} className="rounded-2xl bg-white/5 p-4"><b>{displaySessionLabel(s.session_label, s.session_type)}</b><div className="text-xs text-white/50">{fmt(s.start_at)}</div><div className="text-xs text-white/45">{s.branch} · capacity {s.capacity}</div></div>)}</div></aside>
     </section>
+    {role==="admin"&&<Link href="/staff/no-shows" className="mb-4 inline-flex rounded-xl border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-sm font-bold text-amber-200">No-show verification & member disputes →</Link>}
     <CoachScheduleFeedbackInbox/>
   </div></StaffAppShell>
 }
