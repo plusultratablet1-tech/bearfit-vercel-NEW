@@ -247,3 +247,40 @@ begin
 end $fn$;
 revoke all on function public.staff_cancel_booking(uuid,text) from public,anon;
 grant execute on function public.staff_cancel_booking(uuid,text) to authenticated;
+
+-- Coaches see only a boolean final-confirmation status for their OWN assigned bookings.
+-- They never see member dispute statements or private payment/medical evidence.
+create or replace function public.coach_final_booking_confirmation_status()
+returns jsonb language plpgsql stable security definer set search_path='' as $fn$
+declare v_uid uuid:=(select auth.uid());
+ v_branch text;
+ v_results jsonb;
+begin
+ if v_uid is null or not exists(select 1 from public.profiles p
+   where p.id=v_uid and p.role='coach')
+ then raise exception 'Coach sign-in required'; end if;
+ select c.branch into v_branch from public.coaches c where c.user_id=v_uid
+   and c.is_active and not coalesce(c.is_demo,false);
+ if v_branch is null then raise exception 'Active coach not linked'; end if;
+ select coalesce(jsonb_object_agg(b.id::text,exists(
+   select 1 from public.booking_final_confirmations f
+    where f.booking_id=b.id
+      and f.member_id=b.member_id
+      and f.final_schedule_revision=b.final_schedule_revision
+      and f.start_at is not distinct from b.start_at
+      and f.end_at is not distinct from b.end_at
+      and f.coach_user_id is not distinct from b.assigned_coach_user_id
+      and f.branch is not distinct from b.branch
+      and f.session_type is not distinct from b.session_type
+      and f.session_label is not distinct from b.session_label
+      and f.slot_id is not distinct from b.slot_id
+  )), '{}'::jsonb)
+ into v_results
+ from public.bookings b
+ where b.assigned_coach_user_id=v_uid and b.branch=v_branch
+   and b.status='confirmed'
+   and b.start_at between now()-interval '7 days' and now()+interval '90 days';
+ return v_results;
+end $fn$;
+revoke all on function public.coach_final_booking_confirmation_status() from public,anon;
+grant execute on function public.coach_final_booking_confirmation_status() to authenticated;
