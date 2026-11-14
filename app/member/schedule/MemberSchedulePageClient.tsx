@@ -42,6 +42,8 @@ export default function MemberSchedulePageClient({initialData}:{initialData:Memb
   const [error,setError]=useState<string|null>(initialData.loadError)
   const [success,setSuccess]=useState<string|null>(null)
   const [working,setWorking]=useState<string|null>(null)
+  const [policyAccepted,setPolicyAccepted]=useState(false)
+  const [acceptedTerms,setAcceptedTerms]=useState<Record<string,string>>({})
   const [customOpen,setCustomOpen]=useState(false)
   const [custom,setCustom]=useState({sessionLabel:"Strength & Conditioning",start:"",coach:"",duration:"60"})
   const [reload,setReload]=useState(0)
@@ -55,7 +57,8 @@ export default function MemberSchedulePageClient({initialData}:{initialData:Memb
     void Promise.all([
       supabase.rpc("member_calendar_slots",{p_month:month+"-01"}),
       supabase.from("bookings").select("*").gte("requested_start_at",new Date(first).toISOString()).lt("requested_start_at",new Date(last).toISOString()).order("requested_start_at").limit(200),
-    ]).then(([slotsResult,bookingsResult])=>{
+      supabase.from("booking_policy_acceptances").select("booking_id,accepted_at").limit(200),
+    ]).then(([slotsResult,bookingsResult,termsResult])=>{
       if(!active)return
       setLoading(false)
       if(slotsResult.error||bookingsResult.error){
@@ -65,6 +68,7 @@ export default function MemberSchedulePageClient({initialData}:{initialData:Memb
       }
       setCalendarSlots((slotsResult.data??[]) as CalendarSlot[])
       setMonthBookings((bookingsResult.data??[]) as BookingRow[])
+      setAcceptedTerms(Object.fromEntries((termsResult.data??[]).map(t=>[t.booking_id,t.accepted_at])))
     }).catch(()=>{
       if(active){setLoading(false);setError("Unable to load this month's schedule.")}
     })
@@ -80,6 +84,8 @@ export default function MemberSchedulePageClient({initialData}:{initialData:Memb
   const selectedSlots=useMemo(()=>calendarSlots.filter(s=>dateKey(s.start_at)===selected),[calendarSlots,selected])
   const selectedBookings=useMemo(()=>monthBookings.filter(b=>dateKey(b.start_at??b.requested_start_at)===selected),[monthBookings,selected])
   const upcoming=useMemo(()=>monthBookings.filter(b=>b.status==="pending"||b.status==="confirmed"),[monthBookings])
+  const tomorrow=dateKey(new Date(Date.now()+24*60*60*1000).toISOString())
+  const reminders=upcoming.filter(b=>b.status==="confirmed"&&dateKey(b.start_at??b.requested_start_at)===tomorrow)
 
   function moveMonth(offset:number){
     const next=nextMonth(month,offset)
@@ -87,26 +93,32 @@ export default function MemberSchedulePageClient({initialData}:{initialData:Memb
   }
   async function requestSlot(slot:CalendarSlot){
     if(slot.remaining<=0)return
+    if(!policyAccepted){setError("You must accept the cancellation and no-show policy before requesting a new session.");return}
     setWorking(slot.id);setError(null);setSuccess(null)
-    const {error:rpcError}=await supabase.rpc("member_request_slot",{p_slot_id:slot.id})
+    const {data:requested,error:rpcError}=await supabase.rpc("member_request_slot",{p_slot_id:slot.id})
     setWorking(null)
     if(rpcError){setError(rpcError.message);return}
-    setSuccess("Request sent to BearFit Admin for confirmation. No sessions deducted.")
+    const bookedId=(requested as {booking_id?:string}|null)?.booking_id
+    if(bookedId){const {error:termsError}=await supabase.rpc("member_accept_booking_no_show_terms",{p_booking_id:bookedId});if(termsError){setError("Booking request created, but policy confirmation failed. Open My Requests below and confirm your terms: "+termsError.message);setReload(v=>v+1);router.refresh();return}}
+    setSuccess("Booking requested and cancellation policy recorded. No sessions deducted.")
     setReload(v=>v+1);router.refresh()
   }
   async function requestCustom(event:FormEvent){
     event.preventDefault()
+    if(!policyAccepted){setError("Accept the cancellation policy before requesting a session.");return}
     if(!custom.start){setError("Choose your preferred date and time.");return}
     const start=new Date(custom.start+":00+08:00")
     if(Number.isNaN(start.getTime())){setError("Invalid date or time.");return}
     setWorking("custom");setError(null);setSuccess(null)
-    const {error:rpcError}=await supabase.rpc("member_request_custom_session",{
+    const {data:requested,error:rpcError}=await supabase.rpc("member_request_custom_session",{
       p_session_label:custom.sessionLabel,p_requested_start_at:start.toISOString(),
       p_requested_coach_user_id:custom.coach||null,p_duration_minutes:Number(custom.duration)
     })
     setWorking(null)
     if(rpcError){setError(rpcError.message);return}
-    setSuccess("Custom request submitted. Admin must confirm it.")
+    const bookedId=(requested as {booking_id?:string}|null)?.booking_id
+    if(bookedId){const {error:termsError}=await supabase.rpc("member_accept_booking_no_show_terms",{p_booking_id:bookedId});if(termsError){setError("Request submitted, but terms confirmation failed. Confirm the booking below: "+termsError.message);setReload(v=>v+1);router.refresh();return}}
+    setSuccess("Custom request submitted with your policy acknowledgment. Admin must confirm it.")
     setCustomOpen(false);setReload(v=>v+1);router.refresh()
   }
   async function cancelBooking(booking:BookingRow){
@@ -115,9 +127,23 @@ export default function MemberSchedulePageClient({initialData}:{initialData:Memb
     setWorking(null)
     if(rpcError){setError(rpcError.message);return}
     if((data as {staff_contact_required?:boolean}|null)?.staff_contact_required){
-      setError("Inside the 4-hour change window. Please contact staff/admin.");return
+      const note=window.prompt("Free cancellation has ended. Explain your late cancellation for Admin review (at least 8 characters). This does not automatically deduct a session.")
+      if(!note){setError("The free cancellation deadline has passed. Contact BearFit Admin or submit a late cancellation request.");return}
+      const {error:lateError}=await supabase.rpc("member_report_late_cancellation",{p_booking_id:booking.id,p_reason:note.trim()})
+      if(lateError){setError(lateError.message);return}
+      setSuccess("Late cancellation submitted for Admin review. No session was deducted. The booking stays confirmed until Admin decides.");setReload(v=>v+1);router.refresh();return
     }
     setSuccess("Booking cancelled.");setReload(v=>v+1);router.refresh()
+  }
+
+  async function confirmTerms(b:BookingRow){
+    setWorking(b.id);setError(null);setSuccess(null)
+    const {error:termsError}=await supabase.rpc("member_accept_booking_no_show_terms",{p_booking_id:b.id})
+    setWorking(null)
+    if(termsError){setError(termsError.message);return}
+    setAcceptedTerms(old=>({...old,[b.id]:new Date().toISOString()}))
+    setSuccess("Booking cancellation and no-show rules acknowledged. Your confirmation is recorded.")
+    router.refresh()
   }
 
   return <MemberAppShell activePath="/member/schedule">
@@ -126,8 +152,17 @@ export default function MemberSchedulePageClient({initialData}:{initialData:Memb
         <p className="text-xs font-bold uppercase tracking-[.18em] text-orange-300">Member Schedule</p>
         <h1 className="mt-1 text-3xl font-extrabold">Your training calendar</h1>
         <p className="mt-2 text-sm text-white/55">Home branch: <b className="text-white">{initialData.member?.branch}</b> · Requests require at least 24 hours' notice · All times Philippines</p>
+        <div className="mt-3 flex flex-wrap gap-3"><Link href="/member/no-shows" className="rounded-xl border border-orange-400/30 bg-orange-400/10 px-4 py-2 text-sm font-bold text-orange-200">View No-Show Notices & Disputes</Link></div>
         <Link href="/member/freeze" className="mt-3 inline-flex rounded-xl border border-orange-400/30 bg-orange-400/10 px-4 py-2 text-sm font-bold text-orange-200 hover:bg-orange-400/20">Request Package Freeze / Extension</Link>
       </header>
+      <section className="mb-4 rounded-2xl border border-orange-400/30 bg-orange-400/10 p-4 text-sm">
+        <b>Cancellation policy · Philippines time:</b> Free cancellation ends at 10:00 PM the calendar night before a confirmed session for bookings that accept this policy. Late cancellations and no-shows may cost 1 session ONLY after Admin evidence review. Coach reports alone cannot deduct sessions. Older bookings without agreement retain their original 4-hour rule.
+        <label className="mt-3 flex items-start gap-2 font-semibold"><input type="checkbox" checked={policyAccepted} onChange={e=>setPolicyAccepted(e.target.checked)} className="mt-1"/>I understand and agree to these rules for new session requests.</label>
+        <p className="mt-2 text-xs text-white/60">This in-app notice does not mean an email, SMS, or push message was sent.</p>
+      </section>
+      {reminders.length>0&&<div className="mb-4 rounded-2xl border border-amber-300/30 bg-amber-300/10 p-4 text-sm text-amber-100">
+        Reminder: {reminders.length} confirmed session{reminders.length===1?"":"s"} tomorrow. Free cancellation ends at 10:00 PM tonight for bookings under the new policy. Open your bookings below to cancel or confirm terms.
+      </div>}
       {error&&<p role="alert" className="mb-4 rounded-2xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-200">{error}</p>}
       {success&&<p role="status" className="mb-4 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-4 text-sm text-emerald-200">{success}</p>}
       <section className="mb-6 grid gap-3 md:grid-cols-3" aria-label="Package balances">
@@ -185,7 +220,7 @@ export default function MemberSchedulePageClient({initialData}:{initialData:Memb
                   <p className={"mt-3 text-sm font-bold "+(slot.remaining>0?"text-emerald-300":"text-amber-300")}>{slot.remaining>0?slot.remaining+" of "+slot.capacity+" spots left":"Fully booked"} <span className="font-normal text-white/45">· {slot.booked} confirmed</span></p>
                   {late&&<p className="mt-2 text-xs text-amber-300">Less than 24 hours: contact staff/admin</p>}
                   {eligible?.blocking_reason&&<p className="mt-2 text-xs text-red-300">{eligible.blocking_reason}</p>}
-                  <button disabled={disabled} onClick={()=>void requestSlot(slot)} className="mt-3 w-full rounded-xl bg-[#ff7a1a] px-4 py-3 text-sm font-bold disabled:bg-white/10 disabled:text-white/35">{working===slot.id?"Requesting…":"Request session"}</button>
+                  <button disabled={disabled||!policyAccepted} onClick={()=>void requestSlot(slot)} className="mt-3 w-full rounded-xl bg-[#ff7a1a] px-4 py-3 text-sm font-bold disabled:bg-white/10 disabled:text-white/35">{working===slot.id?"Requesting…":"Request session"}</button>
                 </article>
               })}
             </div>}
@@ -197,11 +232,15 @@ export default function MemberSchedulePageClient({initialData}:{initialData:Memb
         <aside className="space-y-4">
           <div className="rounded-[24px] border border-white/10 bg-[#141414] p-5">
             <h2 className="flex items-center gap-2 text-xl font-bold"><CalendarDays size={19}/>My requests</h2>
-            <p className="mt-1 text-xs text-white/50">Pending requests require Admin confirmation. Confirmed sessions can be cancelled until 4 hours before start.</p>
+            <p className="mt-1 text-xs text-white/50">Pending requests need Admin confirmation. For sessions with accepted new terms, free cancellation closes at 10:00 PM the night before; older bookings retain their original four-hour window.</p>
             <div className="mt-4 space-y-3">{upcoming.length===0?<p className="text-sm text-white/45">No pending or confirmed bookings this month.</p>:upcoming.map(b=><article key={b.id} className="rounded-2xl bg-white/5 p-4">
               <div className="flex items-start justify-between gap-2"><b className="text-sm">{displaySessionLabel(b.session_label,b.session_type)}</b><span className="text-xs uppercase text-orange-300">{b.status}</span></div>
               <p className="mt-2 text-sm text-white/55">{fmt(b.start_at??b.requested_start_at)}</p>
-              <button disabled={working===b.id} onClick={()=>void cancelBooking(b)} className="mt-3 text-xs font-bold text-red-300">Cancel / change</button>
+              {b.status==="confirmed"&&<div className="mt-2">
+                 <p className="text-xs text-white/50">{acceptedTerms[b.id]?"Policy accepted · "+fmt(acceptedTerms[b.id]):"No new-policy consent recorded for this booking"}</p>
+                 <button disabled={working===b.id} type="button" onClick={()=>void confirmTerms(b)} className="mt-2 rounded-lg border border-orange-400/20 px-3 py-2 text-xs font-bold text-orange-200">Confirm booking & penalty terms</button>
+               </div>}
+               <button disabled={working===b.id} onClick={()=>void cancelBooking(b)} className="mt-3 block text-xs font-bold text-red-300">Cancel / change</button>
             </article>)}</div>
           </div>
           {customOpen&&<form onSubmit={requestCustom} className="rounded-[24px] border border-orange-400/25 bg-[#141414] p-5">
