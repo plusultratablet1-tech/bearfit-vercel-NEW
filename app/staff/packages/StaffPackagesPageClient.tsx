@@ -132,6 +132,7 @@ export default function StaffPackagesPageClient({
           <p className="text-xs font-bold uppercase tracking-[.2em] text-[#ff9b54]">Operations</p>
           <h1 className="mt-1 text-2xl font-black md:text-3xl">Package Settings</h1>
           <p className="mt-1 text-sm text-white/45">Prices are guidance. Session rules stay protected.</p>
+          {role==="admin" && <Link href="/staff/freezes" className="mt-4 inline-flex rounded-xl border border-orange-400/30 bg-orange-400/10 px-4 py-2 text-sm font-bold text-orange-200 hover:bg-orange-400/20">Review Freeze / Extension Requests</Link>}
         </header>
 
         {error && <div className="mt-4 rounded-2xl bg-red-500/10 p-4 text-red-200">{error}</div>}
