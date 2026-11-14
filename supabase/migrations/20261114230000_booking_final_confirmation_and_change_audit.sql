@@ -115,6 +115,30 @@ drop trigger if exists bearfit_booking_change_notice on public.bookings;
 create trigger bearfit_booking_change_notice after update on public.bookings
  for each row execute function private.audit_booking_operational_change();
 
+-- Direct Admin assignments may insert a confirmed booking without an UPDATE.
+-- Capture the initial confirmation without inventing a member acceptance.
+create or replace function private.audit_direct_booking_assignment()
+returns trigger language plpgsql security definer set search_path='' as $fn$
+begin
+ if new.status='confirmed' then
+   insert into public.booking_operational_events
+   (booking_id,member_id,event_type,previous_state,new_state,detail,actor_user_id)
+   values(new.id,new.member_id,'confirmed',null,
+       jsonb_build_object('status',new.status,'start_at',new.start_at,
+         'end_at',new.end_at,'coach_user_id',new.assigned_coach_user_id,
+         'branch',new.branch,'session_label',new.session_label,
+         'schedule_revision',new.final_schedule_revision),
+       'Admin assigned a session: please acknowledge the final schedule',
+       (select auth.uid()));
+ end if;
+ return new;
+end $fn$;
+drop trigger if exists bearfit_direct_booking_assignment_notice on public.bookings;
+create trigger bearfit_direct_booking_assignment_notice after insert on public.bookings
+ for each row execute function private.audit_direct_booking_assignment();
+revoke all on function private.audit_direct_booking_assignment()
+ from public,anon,authenticated;
+
 -- Final booking confirmation is append-only, member-scoped and idempotent by schedule revision.
 -- A member cannot retroactively accept the STRICT penalty after that deadline;
 -- in that case the booking can still be acknowledged without inventing new penalty consent.
