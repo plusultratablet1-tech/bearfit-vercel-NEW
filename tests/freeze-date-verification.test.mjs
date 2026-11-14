@@ -16,7 +16,7 @@ test("date verification never replaces an existing expiry",()=>{
 test("original start dates are immutable and evidence is required",()=>{
  assert.match(sql,/different start date/)
  assert.match(sql,/evidence_reference text not null/)
- assert.match(client,/Original start date/)
+ assert.match(client,/Existing start date/)
 })
 test("validity verification never changes payments or sessions",()=>{
  assert.doesNotMatch(sql,/update public\.members/)
