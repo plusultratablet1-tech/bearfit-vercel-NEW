@@ -12,8 +12,8 @@ type Request={
   start_date:string;end_date:string;status:string;requested_at:string;proof_path:string;
   details:string|null;decision_note:string|null;approved_days:number|null;
   original_expires_at:string|null;revised_expires_at:string|null;
-  members:{member_code:string;full_name:string}|null;
-  member_package_cycles:{starts_at:string|null;expires_at:string|null}|null;
+  members:{member_code:string;full_name:string}[];
+  member_package_cycles:{starts_at:string|null;expires_at:string|null}[];
 }
 function phDate(d:string|null){return d?new Intl.DateTimeFormat("en-PH",{timeZone:"Asia/Manila",year:"numeric",month:"short",day:"numeric"}).format(new Date(d)):"Unverified"}
 
@@ -62,15 +62,15 @@ export default function AdminFreezesClient({initialRequests,loadError}:{
     return <article key={row.id} className="rounded-2xl border border-white/10 bg-[#101725] p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wide text-orange-300">{row.members?.member_code??"Member"}</p>
-          <h3 className="mt-1 text-lg font-black">{row.members?.full_name??"Member record"}</h3>
+          <p className="text-xs font-bold uppercase tracking-wide text-orange-300">{row.members?.[0]?.member_code??"Member"}</p>
+          <h3 className="mt-1 text-lg font-black">{row.members?.[0]?.full_name??"Member record"}</h3>
           <p className="mt-1 text-sm capitalize text-white/60">{row.reason} · {row.start_date} to {row.end_date}</p>
         </div>
         <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold uppercase">{row.status}</span>
       </div>
       <div className="mt-4 grid gap-2 text-sm text-white/60 sm:grid-cols-2">
-        <p>Original/current expiry: <b className="text-white">{phDate(row.original_expires_at??row.member_package_cycles?.expires_at??null)}</b></p>
-        <p>Package start: <b className="text-white">{phDate(row.member_package_cycles?.starts_at??null)}</b></p>
+        <p>Original/current expiry: <b className="text-white">{phDate(row.original_expires_at??row.member_package_cycles?.[0]?.expires_at??null)}</b></p>
+        <p>Package start: <b className="text-white">{phDate(row.member_package_cycles?.[0]?.starts_at??null)}</b></p>
       </div>
       {row.details&&<p className="mt-3 rounded-xl bg-white/[.04] p-3 text-sm text-white/70">{row.details}</p>}
       <p className="mt-3 text-xs text-white/45">Submitted {phDate(row.requested_at)} · Evidence private; signed links expire in 90 seconds.</p>
