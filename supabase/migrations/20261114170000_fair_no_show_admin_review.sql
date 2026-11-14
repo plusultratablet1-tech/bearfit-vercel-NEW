@@ -49,8 +49,8 @@ revoke all on public.booking_no_show_cases from anon,authenticated;
 grant select on public.booking_no_show_cases to authenticated;
 create policy "Member reads only own no show cases" on public.booking_no_show_cases
  for select to authenticated using (exists(select 1 from public.members m where m.id=member_id and m.user_id=(select auth.uid())));
-create policy "Coach reads only assigned reports" on public.booking_no_show_cases
- for select to authenticated using (coach_user_id=(select auth.uid()) and exists (select 1 from public.profiles p where p.id=(select auth.uid()) and p.role='coach'));
+-- Coach can submit factual absence reports through a restricted RPC,
+-- but member dispute texts are private to the member and Admin.
 create policy "Admin reads no show review cases" on public.booking_no_show_cases
  for select to authenticated using (exists(select 1 from public.profiles p where p.id=(select auth.uid()) and p.role='admin'));
 
@@ -205,6 +205,12 @@ begin
    -- If booked/confirmed after the cutoff, client must re-accept after the final confirmation.
    if v_b.updated_at>v_cutoff and v_terms.accepted_at<v_b.updated_at
      then raise exception 'Late-confirmed booking requires acceptance after final confirmation'; end if;
+   -- Some legitimate QR/check-in sessions have no booking ID. Block charges if
+   -- any overlapping member attendance log could correspond to this slot.
+   if exists(select 1 from public.session_logs s
+     where s.member_id=v_b.member_id and s.trained_at between
+       v_b.start_at-interval '30 minutes' and v_b.end_at+interval '30 minutes')
+   then raise exception 'Possible member attendance exists during this slot; investigate instead of charging'; end if;
    if v_b.member_package_id is null then raise exception 'No linked package cycle'; end if;
    v_charged:=private.consume_package_session(v_b.member_package_id,v_b.member_id,v_uid,v_b.id,
      'Admin-verified no-show case '||v_c.id::text||': '||left(btrim(p_note),500));
