@@ -55,3 +55,13 @@ test("Policy manual documents member, coach, Admin authority and pending finance
  assert.doesNotMatch(sql,/update public\.payments/)
  assert.doesNotMatch(sql,/update public\.member_package_cycles/)
 })
+
+test("Coach sees only acknowledgment boolean for their own assigned sessions",()=>{
+ const coach=readFileSync("app/coach/CoachScheduleOverview.tsx","utf8")
+ assert.match(sql,/coach_final_booking_confirmation_status/)
+ assert.match(sql,/b\.assigned_coach_user_id=v_uid and b\.branch=v_branch/)
+ assert.match(sql,/p\.role='coach'/)
+ assert.match(coach,/Awaiting client final schedule acknowledgment/)
+ assert.match(coach,/coach_final_booking_confirmation_status/)
+ assert.doesNotMatch(sql,/f\.dispute_reason/)
+})
