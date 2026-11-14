@@ -86,6 +86,11 @@ begin
  if v_b.status not in ('pending','confirmed') then raise exception 'Only pending or confirmed bookings are eligible'; end if;
  if coalesce(v_b.start_at,v_b.requested_start_at)<=now() then raise exception 'Session already started'; end if;
  v_cutoff:=(((coalesce(v_b.start_at,v_b.requested_start_at) at time zone 'Asia/Manila')::date::timestamp - interval '2 hours') at time zone 'Asia/Manila');
+ -- Do not retroactively replace a member's existing free-cancellation entitlement
+ -- with a deadline that has already passed.
+ if now()>v_cutoff and not exists(
+   select 1 from public.booking_policy_acceptances t where t.booking_id=v_b.id)
+ then raise exception 'The 10 PM deadline already passed. Existing booking retains original cancellation rights; contact Admin for late confirmation'; end if;
  insert into public.booking_policy_acceptances(booking_id,member_id,accepted_by,accepted_at,cutoff_at)
  values(v_b.id,v_b.member_id,v_uid,now(),v_cutoff)
  on conflict(booking_id) do update
@@ -131,7 +136,11 @@ begin
  select b.* into v_b from public.bookings b join public.members m on m.id=b.member_id
   where b.id=p_booking_id and m.user_id=v_uid for update of b;
  if not found or v_b.status<>'confirmed' then raise exception 'Only your confirmed bookings can be reported late'; end if;
- v_cutoff:=(((coalesce(v_b.start_at,v_b.requested_start_at) at time zone 'Asia/Manila')::date::timestamp - interval '2 hours') at time zone 'Asia/Manila');
+ if exists(select 1 from public.booking_policy_acceptances t where t.booking_id=v_b.id) then
+   v_cutoff:=(((coalesce(v_b.start_at,v_b.requested_start_at) at time zone 'Asia/Manila')::date::timestamp - interval '2 hours') at time zone 'Asia/Manila');
+ else
+   v_cutoff:=coalesce(v_b.start_at,v_b.requested_start_at)-interval '4 hours';
+ end if;
  if now()<=v_cutoff then raise exception 'Free cancellation is still available'; end if;
  if exists(select 1 from public.session_logs where booking_id=v_b.id) then raise exception 'Session already processed'; end if;
  insert into public.booking_no_show_cases(booking_id,member_id,coach_user_id,report_kind,report_notes,reported_by)
