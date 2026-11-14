@@ -62,9 +62,15 @@ test("Sensitive notices are member- or admin-scoped",()=>{
  assert.match(sql,/Member reads only own no show cases/)
  assert.match(sql,/Admin reads no show review cases/)
  assert.match(sql,/revoke all on public\.booking_no_show_cases from anon,authenticated/)
+ assert.doesNotMatch(sql,/create policy "Coach reads only assigned reports"/)
 })
 test("On-screen reminders never claim an SMS or email was sent",()=>{
  assert.match(member,/Reminder:/)
  assert.match(member,/does not mean an email, SMS, or push message was sent/)
  assert.match(notices,/SMS, email and push delivery are not yet enabled/)
+})
+
+test("Overlapping member attendance blocks incorrect Admin no-show deductions",()=>{
+ assert.match(sql,/Possible member attendance exists during this slot/)
+ assert.match(sql,/s\.trained_at between/)
 })
