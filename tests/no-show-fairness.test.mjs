@@ -1,0 +1,70 @@
+import test from "node:test"
+import assert from "node:assert/strict"
+import {readFileSync} from "node:fs"
+
+const sql=readFileSync("supabase/migrations/20261114170000_fair_no_show_admin_review.sql","utf8")
+const member=readFileSync("app/member/schedule/MemberSchedulePageClient.tsx","utf8")
+const notices=readFileSync("app/member/no-shows/MemberNoShowClient.tsx","utf8")
+const shell=readFileSync("components/bearfit/MemberPersistentShell.tsx","utf8")
+const admin=readFileSync("app/staff/no-shows/AdminNoShowClient.tsx","utf8")
+const staff=readFileSync("app/staff/schedule/StaffSchedulePageClient.tsx","utf8")
+const coach=readFileSync("app/coach/CoachScheduleOverview.tsx","utf8")
+
+test("Only verified Admin can charge a no-show; direct legacy deduction fails closed",()=>{
+ assert.match(sql,/admin_decide_no_show_case/)
+ assert.match(sql,/role='admin'/)
+ assert.match(sql,/Direct no-show deduction is disabled/)
+ assert.doesNotMatch(staff,/staff_mark_no_show/)
+ assert.match(staff,/Report absence \(no charge\)/)
+})
+test("Coach reports only their own confirmed booking and no sessions deducted by coach",()=>{
+ assert.match(sql,/v_b\.assigned_coach_user_id is distinct from v_uid/)
+ assert.match(sql,/v_b\.end_at>now\(\)/)
+ assert.match(sql,/staff_report_no_show/)
+ assert.match(coach,/Report no-show to Admin/)
+ assert.doesNotMatch(coach,/private\.consume_package_session/)
+})
+test("No charge without member terms acceptance or if booking changed after the deadline",()=>{
+ assert.match(sql,/No recorded client acceptance of this booking penalty policy/)
+ assert.match(sql,/Booking time changed after acceptance/)
+ assert.match(sql,/Late-confirmed booking requires acceptance after final confirmation/)
+ assert.match(sql,/exists\(select 1 from public\.session_logs where booking_id=v_b\.id\)/)
+})
+test("Ten PM Philippines time and grandfathered four-hour cutoff",()=>{
+ assert.match(sql,/interval '2 hours'/)
+ assert.match(sql,/at time zone 'Asia\/Manila'/)
+ assert.match(sql,/Legacy bookings never opted into stricter terms/)
+ assert.match(sql,/interval '4 hours'/)
+ assert.match(member,/10:00 PM/)
+ assert.match(member,/policyAccepted/)
+ assert.match(member,/member_accept_booking_no_show_terms/)
+})
+test("Member notices and dispute are independent of approval",()=>{
+ assert.match(sql,/member_first_seen_at/)
+ assert.match(sql,/member_acknowledged_at/)
+ assert.match(sql,/interval '48 hours'/)
+ assert.match(sql,/member_respond_no_show_case/)
+ assert.match(notices,/Acknowledge receipt/)
+ assert.match(notices,/Dispute deduction/)
+ assert.match(shell,/unreviewedCharges/)
+ assert.match(admin,/Restore 1 Session/)
+})
+test("One record per booking and auditable idempotent session restoration",()=>{
+ assert.match(sql,/booking_id uuid not null unique/)
+ assert.match(sql,/case_id uuid not null unique/)
+ assert.match(sql,/original_session_log_id/)
+ assert.match(sql,/v_cycle\.sessions_left>=v_cycle\.sessions_total/)
+ assert.match(sql,/sessions_left=sessions_left\+1/)
+ assert.doesNotMatch(sql,/delete from public\.session_logs/i)
+})
+test("Sensitive notices are member- or admin-scoped",()=>{
+ assert.match(sql,/alter table public\.booking_no_show_cases enable row level security/)
+ assert.match(sql,/Member reads only own no show cases/)
+ assert.match(sql,/Admin reads no show review cases/)
+ assert.match(sql,/revoke all on public\.booking_no_show_cases from anon,authenticated/)
+})
+test("On-screen reminders never claim an SMS or email was sent",()=>{
+ assert.match(member,/Reminder:/)
+ assert.match(member,/does not mean an email, SMS, or push message was sent/)
+ assert.match(notices,/SMS, email and push delivery are not yet enabled/)
+})
