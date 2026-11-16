@@ -58,6 +58,7 @@ export default function CoachAttendanceAdminClient() {
   const [notice,setNotice]=useState("")
   const [busy,setBusy]=useState(false)
   const [selectedCoach,setSelectedCoach]=useState("")
+  const [selectedShiftBranch,setSelectedShiftBranch]=useState<string>(branches[0])
   const [day,setDay]=useState(()=>dateInput(1))
   const [start,setStart]=useState("08:00")
   const [end,setEnd]=useState("17:00")
@@ -119,8 +120,10 @@ export default function CoachAttendanceAdminClient() {
       setError("Choose a valid start and end time (overnight shifts require Admin planning later).");return
     }
     setBusy(true);setError("");setNotice("")
+    const nateSelected = coaches.some(coach=>coach.id===selectedCoach&&coach.username?.toLowerCase()==="coachnate")
     const {error:x}=await supabase.rpc("admin_plan_coach_shift",{
-      p_coach_id:selectedCoach,p_starts_at:startsAt.toISOString(),p_ends_at:endsAt.toISOString()
+      p_coach_id:selectedCoach,p_starts_at:startsAt.toISOString(),p_ends_at:endsAt.toISOString(),
+      ...(nateSelected?{p_branch:selectedShiftBranch}:{})
     })
     setBusy(false)
     if(x)setError(x.message)
@@ -140,7 +143,8 @@ export default function CoachAttendanceAdminClient() {
   const displayPlans:Plan[]=demoMode ? sample.plans : plans
   const displayPunches:Punch[]=demoMode ? sample.punches : punches
   const punchesByPlan=useMemo(()=>new Map(displayPunches.filter(p=>p.work_shift_id).map(p=>[p.work_shift_id!,p])),[displayPunches])
-  const eligibleCoaches=displayCoaches.filter(c=>(filter==="all"||c.branch===filter)&&(coachFilter==="all"||c.id===coachFilter))
+  const eligibleCoaches=displayCoaches.filter(c=>(filter==="all"||c.branch===filter||
+     (c.username?.toLowerCase()==="coachnate"&&branches.includes(filter)))&&(coachFilter==="all"||c.id===coachFilter))
   const eligibleIds=new Set(eligibleCoaches.map(c=>c.id))
   const filteredPlans=displayPlans.filter(w=>eligibleIds.has(w.coach_id)&&(filter==="all"||w.branch===filter))
   const todayShifts=filteredPlans.filter(w=>shiftDay(w)===selectedDate).sort((a,b)=>{
@@ -241,7 +245,8 @@ export default function CoachAttendanceAdminClient() {
                 <option value="all">All branches</option>{branches.map(b=><option key={b} value={b}>{b}</option>)}
               </select>
               <select aria-label="Filter by coach" value={coachFilter} onChange={e=>setCoachFilter(e.target.value)} className={field+" max-w-44"}>
-                <option value="all">All coaches</option>{displayCoaches.filter(c=>filter==="all"||c.branch===filter).map(c=><option key={c.id} value={c.id}>{c.display_name}</option>)}
+                <option value="all">All coaches</option>{displayCoaches.filter(c=>filter==="all"||c.branch===filter||
+                      (c.username?.toLowerCase()==="coachnate"&&branches.includes(filter))).map(c=><option key={c.id} value={c.id}>{c.display_name}</option>)}
               </select>
             </div>
           </div>
@@ -402,6 +407,12 @@ export default function CoachAttendanceAdminClient() {
                     <option value="">Select coach</option>{coaches.filter(c=>c.is_active).map(c=><option key={c.id} value={c.id}>{c.display_name} · {c.branch}{!c.user_id?" (login not created)":""}</option>)}
                   </select>
                 </label>
+                {coaches.some(coach=>coach.id===selectedCoach&&coach.username?.toLowerCase()==="coachnate")&&
+                  <label className="col-span-2 text-xs text-white/55">Work branch (CoachNate)
+                    <select value={selectedShiftBranch} onChange={e=>setSelectedShiftBranch(e.target.value)} className={field+" mt-1"}>
+                      {branches.map(b=><option key={b} value={b}>{b}</option>)}
+                    </select>
+                  </label>}
                 <label className="col-span-2 text-xs text-white/55">Work date (PH)
                   <input className={field+" mt-1"} type="date" min={dateInput(0)} value={day} onChange={e=>setDay(e.target.value)}/>
                 </label>
