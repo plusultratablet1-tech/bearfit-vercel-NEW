@@ -17,6 +17,7 @@ import {
   ScanLine,
   ShieldCheck,
   UsersRound,
+  UserRound,
   TicketCheck,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
@@ -34,6 +35,7 @@ const navItems = [
   { label: "Payments", icon: CreditCard, href: "/staff/payments" },
   { label: "Packages", icon: Package, href: "/staff/packages" },
   { label: "Rewards", icon: Gift, href: "/staff/rewards" },
+  { label: "Profile", icon: UserRound, href: "/staff/profile" },
 ]
 
 type Props = {
@@ -53,7 +55,7 @@ export default function StaffPersistentShell({ role, children }: Props) {
   }
 
   const roleLabel = role === "admin" ? "Admin" : "Staff"
-  const visibleNavItems=role==="admin"?navItems:navItems.filter(item=>item.href!=="/staff/home"&&item.href!=="/staff/reconciliation")
+  const visibleNavItems=role==="admin"?navItems:navItems.filter(item=>item.href!=="/staff/home"&&item.href!=="/staff/reconciliation"&&item.href!=="/staff/profile")
 
   return (
     <main className="min-h-screen bg-[#020b1c] text-white">
@@ -130,14 +132,20 @@ export default function StaffPersistentShell({ role, children }: Props) {
                   <p className="text-[11px] font-semibold text-[#ff9b54]">{roleLabel} Portal</p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={handleSignOut}
-                aria-label="Sign out"
-                className="rounded-xl bg-white/5 p-2.5 text-white/60 active:bg-white/10"
-              >
-                <LogOut size={18} />
-              </button>
+              <div className="flex items-center gap-2">
+                {role==="admin"&&<Link href="/staff/profile" aria-label="My Admin Profile"
+                  className="rounded-xl bg-white/5 p-2.5 text-white/70 active:bg-white/10">
+                  <UserRound size={18} />
+                </Link>}
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  aria-label="Sign out"
+                  className="rounded-xl bg-white/5 p-2.5 text-white/60 active:bg-white/10"
+                >
+                  <LogOut size={18} />
+                </button>
+              </div>
             </div>
           </header>
 
