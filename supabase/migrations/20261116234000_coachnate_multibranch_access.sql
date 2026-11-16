@@ -234,7 +234,7 @@ begin
  if not found then raise exception 'Active coach not linked';end if;
 
  select coalesce(jsonb_agg(jsonb_build_object(
-   'member_name',q.full_name,'member_code',q.member_code,
+   'member_name',q.full_name,'member_code',q.member_code,'branch',q.branch,
    'package_name',q.package_name,'membership_status',q.membership_status,
    'total_sessions',q.total_sessions,'sessions_used',q.sessions_used,
    'sessions_left',q.sessions_left,'last_sessions',q.last_sessions,
@@ -242,7 +242,7 @@ begin
    'assignment_source',q.assignment_source
  ) order by q.full_name,q.member_code),'[]'::jsonb) into v_cards
  from (
-   select m.id,m.full_name,m.member_code,m.package_name,m.membership_status,
+   select m.id,m.branch,m.full_name,m.member_code,m.package_name,m.membership_status,
      coalesce(m.total_sessions,0) as total_sessions,
      coalesce(m.sessions_used,0) as sessions_used,
      coalesce(m.sessions_left,0) as sessions_left,
