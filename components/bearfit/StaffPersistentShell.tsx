@@ -17,6 +17,7 @@ import {
   ScanLine,
   ShieldCheck,
   UsersRound,
+  UserRound,
   TicketCheck,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
@@ -34,6 +35,7 @@ const navItems = [
   { label: "Payments", icon: CreditCard, href: "/staff/payments" },
   { label: "Packages", icon: Package, href: "/staff/packages" },
   { label: "Rewards", icon: Gift, href: "/staff/rewards" },
+  { label: "Profile", icon: UserRound, href: "/staff/profile" },
 ]
 
 type Props = {
@@ -53,7 +55,7 @@ export default function StaffPersistentShell({ role, children }: Props) {
   }
 
   const roleLabel = role === "admin" ? "Admin" : "Staff"
-  const visibleNavItems=role==="admin"?navItems:navItems.filter(item=>item.href!=="/staff/home"&&item.href!=="/staff/reconciliation")
+  const visibleNavItems=role==="admin"?navItems:navItems.filter(item=>item.href!=="/staff/home"&&item.href!=="/staff/reconciliation"&&item.href!=="/staff/profile")
 
   return (
     <main className="min-h-screen bg-[#020b1c] text-white">
