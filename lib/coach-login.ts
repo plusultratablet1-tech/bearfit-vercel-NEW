@@ -5,7 +5,8 @@ export const COACH_ALIAS_DOMAIN = "accounts.bearfit.invalid"
 
 export function normalizeCoachUsername(value: string) {
   const candidate = value.trim().toLowerCase()
-  return /^(?:coach[1-9][0-9]{0,5}|coachnate)$/.test(candidate) ? candidate : null
+  if (candidate === "coachnate") return candidate
+  return /^coach[1-9][0-9]{0,5}$/.test(candidate) ? candidate : null
 }
 
 export function coachAliasEmail(value: string) {
