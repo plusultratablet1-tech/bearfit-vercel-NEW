@@ -1,3 +1,39 @@
+-- Fail closed if another deployment changed a BearFit operations RPC.
+-- This prevents overwriting any updated policy, attendance, or financial rule.
+do $bearfit_branch_preflight$
+declare
+  v_drift text;
+begin
+  select string_agg(e.fn_name, ', ') into v_drift from (
+    values
+      ('admin_plan_coach_shift'::text,'370df6b3c7daa613cfdc121be5b9d9ea'::text),
+      ('coach_activity_overview'::text,'eb88e6398bc71d900e71ea9af9522a8b'::text),
+      ('coach_check_guest_pass'::text,'da6af86cf5ffee562b1072869b3d1024'::text),
+      ('coach_client_cards'::text,'277f054e37e2874e769a996b831d6194'::text),
+      ('coach_final_booking_confirmation_status'::text,'1a55dfd2a279e73881fed21c3001e396'::text),
+      ('coach_gps_attendance_status'::text,'40e7e5cae998bd8cc0399bca2c1ba232'::text),
+      ('coach_gps_time_punch'::text,'8ee55ab41f5cfa9d23284f9695443d92'::text),
+      ('coach_historical_activity'::text,'aec968d5c251cc61272e1cabaee17d4a'::text),
+      ('coach_member_qr_preview'::text,'0a974fb7efa1354cb7ad1bc98c18183d'::text),
+      ('coach_operational_dashboard'::text,'251b67adf816ec40a59f721cc8db16cb'::text),
+      ('coach_payment_tracking_overview'::text,'c355b0861772e2cfb5b7095c3b6e7dae'::text),
+      ('coach_plot_sessions'::text,'1c528777351fab63f901b3bb6520aad7'::text),
+      ('coach_record_session_event'::text,'3ba5a0330d7b601c82157277ab80d37b'::text),
+      ('coach_report_client_transfer'::text,'9313709cd5719299669d7f45bb2a7312'::text),
+      ('coach_schedule_overview'::text,'4aa2257727eb047dbe040c488e30e354'::text),
+      ('coach_schedule_respond'::text,'4a2852d71b076f2663dae98195f9a4c8'::text)
+  ) e(fn_name,expected_md5)
+  where not exists (
+    select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+    where n.nspname='public' and p.proname=e.fn_name
+      and md5(pg_get_functiondef(p.oid))=e.expected_md5
+  );
+  if v_drift is not null then
+    raise exception 'BearFit coach branch migration canceled: source RPC drift (%)',v_drift;
+  end if;
+end;
+$bearfit_branch_preflight$;
+
 -- BearFit Coach Nate: explicit, coach-scoped multi-branch permissions.
 -- Other coach accounts keep their existing single-branch access.
 -- No member, payment, attendance, session, or payroll records are modified.
