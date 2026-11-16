@@ -144,7 +144,7 @@ export default function CoachAttendanceAdminClient() {
   const displayPunches:Punch[]=demoMode ? sample.punches : punches
   const punchesByPlan=useMemo(()=>new Map(displayPunches.filter(p=>p.work_shift_id).map(p=>[p.work_shift_id!,p])),[displayPunches])
   const eligibleCoaches=displayCoaches.filter(c=>(filter==="all"||c.branch===filter||
-     (c.username?.toLowerCase()==="coachnate"&&branches.includes(filter)))&&(coachFilter==="all"||c.id===coachFilter))
+     (c.username?.toLowerCase()==="coachnate"&&branches.some(allowed=>allowed===filter)))&&(coachFilter==="all"||c.id===coachFilter))
   const eligibleIds=new Set(eligibleCoaches.map(c=>c.id))
   const filteredPlans=displayPlans.filter(w=>eligibleIds.has(w.coach_id)&&(filter==="all"||w.branch===filter))
   const todayShifts=filteredPlans.filter(w=>shiftDay(w)===selectedDate).sort((a,b)=>{
@@ -246,7 +246,7 @@ export default function CoachAttendanceAdminClient() {
               </select>
               <select aria-label="Filter by coach" value={coachFilter} onChange={e=>setCoachFilter(e.target.value)} className={field+" max-w-44"}>
                 <option value="all">All coaches</option>{displayCoaches.filter(c=>filter==="all"||c.branch===filter||
-                      (c.username?.toLowerCase()==="coachnate"&&branches.includes(filter))).map(c=><option key={c.id} value={c.id}>{c.display_name}</option>)}
+                      (c.username?.toLowerCase()==="coachnate"&&branches.some(allowed=>allowed===filter))).map(c=><option key={c.id} value={c.id}>{c.display_name}</option>)}
               </select>
             </div>
           </div>
