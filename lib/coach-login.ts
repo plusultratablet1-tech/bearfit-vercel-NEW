@@ -12,6 +12,19 @@ export function coachAliasEmail(value: string) {
   return username ? username + "@" + COACH_ALIAS_DOMAIN : null
 }
 
+// Admin aliases use the already-reserved accounts domain. The auth.users signup
+// trigger denies public signups to this domain, including admin usernames.
+// Mapping a username does not grant a role; profiles.role controls staff access.
+export function normalizeAdminUsername(value: string) {
+  const candidate = value.trim().toLowerCase()
+  return /^admin[1-9][0-9]{0,5}$/.test(candidate) ? candidate : null
+}
+
+export function adminAliasEmail(value: string) {
+  const username = normalizeAdminUsername(value)
+  return username ? username + "@" + COACH_ALIAS_DOMAIN : null
+}
+
 // Member IDs resolve to reserved aliases; no public member signup can use them.
 export const MEMBER_ALIAS_DOMAIN = "members.bearfit.invalid"
 export function memberAliasEmail(memberCode:string){
@@ -24,5 +37,5 @@ export function resolveLoginEmail(value: string) {
   // Keep existing Supabase Auth aliases unchanged; the .ph address is a public
   // member-facing login handle and must not require a data migration.
   const friendlyMemberHandle = input.match(/^(m[0-9]{4,6})@members\.bearfit\.ph$/)
-  return coachAliasEmail(input) ?? memberAliasEmail(friendlyMemberHandle?.[1] ?? input) ?? input
+  return coachAliasEmail(input) ?? adminAliasEmail(input) ?? memberAliasEmail(friendlyMemberHandle?.[1] ?? input) ?? input
 }
