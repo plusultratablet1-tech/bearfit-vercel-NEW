@@ -132,14 +132,20 @@ export default function StaffPersistentShell({ role, children }: Props) {
                   <p className="text-[11px] font-semibold text-[#ff9b54]">{roleLabel} Portal</p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={handleSignOut}
-                aria-label="Sign out"
-                className="rounded-xl bg-white/5 p-2.5 text-white/60 active:bg-white/10"
-              >
-                <LogOut size={18} />
-              </button>
+              <div className="flex items-center gap-2">
+                {role==="admin"&&<Link href="/staff/profile" aria-label="My Admin Profile"
+                  className="rounded-xl bg-white/5 p-2.5 text-white/70 active:bg-white/10">
+                  <UserRound size={18} />
+                </Link>}
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  aria-label="Sign out"
+                  className="rounded-xl bg-white/5 p-2.5 text-white/60 active:bg-white/10"
+                >
+                  <LogOut size={18} />
+                </button>
+              </div>
             </div>
           </header>
 
