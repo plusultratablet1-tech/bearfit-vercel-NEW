@@ -11,7 +11,7 @@ import CoachPaymentsDashboard from "./CoachPaymentsDashboard"
 import { CalendarDays, CheckCircle2, Clock3, ClipboardCheck, LogOut, QrCode, ShieldCheck, RefreshCw, LockKeyhole } from "lucide-react"
 
 const supabase = createClient()
-type Coach = { id: string; display_name: string; branch: string; username: string | null; is_active: boolean }
+type Coach = { id: string; display_name: string; branch: string; username: string | null; is_active: boolean; allowedBranches?: string[] }
 type Shift = { id: string; starts_at: string; ends_at: string; branch: string; response: "pending" | "confirmed" | "unavailable"; response_at: string | null; reason: string | null; clock_in_at: string | null; clock_out_at: string | null }
 type Booking = { id: string; start_at: string; end_at: string; branch: string; session_label: string | null; session_type: string; status: string; member_name: string; member_code: string }
 type Conduction = { id: string; session_date: string; status: "pending" | "approved" | "rejected"; member_name: string }
@@ -104,7 +104,7 @@ export default function CoachHomeClient({coach,tab="home"}:{coach:Coach|null;tab
       <header className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-5">
         <div><p className="text-xs font-bold uppercase tracking-[.2em] text-orange-300">BEARFIT / COACH PORTAL</p>
           <h1 className="mt-2 text-2xl font-black">Welcome{coach?", "+coach.display_name:""}</h1>
-          <p className="mt-1 text-sm text-white/55">{coach?.branch||"Account setup needed"} · {coach?.username||"Account not linked"}</p></div>
+          <p className="mt-1 text-sm text-white/55">{coach?.allowedBranches?.length ? coach.allowedBranches.join(" · ") : (coach?.branch||"Account setup needed")} · {coach?.username?.toLowerCase()==="coachnate" ? "CoachNate" : (coach?.username||"Account not linked")}</p></div>
         <div className="flex gap-2"><button onClick={()=>void refresh()} className="rounded-xl border border-white/15 p-2.5" aria-label="Refresh"><RefreshCw size={17}/></button>
         <button onClick={()=>void signOut()} className="flex items-center gap-1 rounded-xl border border-white/15 px-3 py-2 text-sm"><LogOut size={16}/> Sign out</button></div>
       </header>
