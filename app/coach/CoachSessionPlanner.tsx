@@ -5,7 +5,7 @@ import {createClient} from "@/lib/supabase/client"
 import {SESSION_TAXONOMY} from "@/lib/session-taxonomy"
 import {CalendarPlus,ChevronDown} from "lucide-react"
 
-type Client={member_name:string;member_code:string;membership_status?:string;assignment_source?:string}
+type Client={member_name:string;member_code:string;branch?:string;membership_status?:string;assignment_source?:string}
 const db=createClient()
 
 function futurePhilippineDateTime(){
@@ -99,7 +99,7 @@ export default function CoachSessionPlanner({onCreated}:{onCreated:()=>Promise<v
             className="mt-2 w-full rounded-xl border border-white/10 bg-[#242424] p-3">
             <option value="">{rosterLoading?"Loading clients…":"Select your client"}</option>
             {clients.map(client=><option key={client.member_code} value={client.member_code}>
-              {client.member_name} · {client.member_code}
+              {client.member_name} · {client.member_code}{client.branch?" · "+client.branch:""}
             </option>)}
           </select>
         </label>
