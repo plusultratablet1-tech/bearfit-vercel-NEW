@@ -48,7 +48,10 @@ export async function POST(request: Request) {
 
   // Verify this server key can see the logged-in Admin's exact profile in
   // this database before any privileged write. Integration keys can be stale.
-  let admin: ReturnType<typeof createSupabaseAdminClient> | null = null
+  let admin = createSupabaseAdminClient(url, serverKeys[0], {
+    auth: { persistSession: false, autoRefreshToken: false },
+  })
+  let privilegedAccessVerified = false
   for (const key of serverKeys) {
     const candidate = createSupabaseAdminClient(url, key, {
       auth: { persistSession: false, autoRefreshToken: false },
@@ -57,10 +60,11 @@ export async function POST(request: Request) {
       .select("id,role").eq("id",user.id).maybeSingle()
     if (!verifyError && verified?.id === user.id && verified.role === "admin") {
       admin = candidate
+      privilegedAccessVerified = true
       break
     }
   }
-  if (!admin) return reply({ error: "The server's Supabase Admin key is not authorized for this project" }, 503)
+  if (!privilegedAccessVerified) return reply({ error: "The server's Supabase Admin key is not authorized for this project" }, 503)
 
   // A second click must never reset or overwrite an existing account.
   const { data: existingUsers, error: listError } = await admin.auth.admin.listUsers({
