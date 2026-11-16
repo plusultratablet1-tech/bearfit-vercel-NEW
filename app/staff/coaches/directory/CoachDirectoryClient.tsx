@@ -195,7 +195,12 @@ export default function CoachDirectoryClient() {
               Maintain coach identities, branches, verified staff account links and individual per-member-conduction rates.
             </p>
           </div>
-          <button onClick={() => void load()} type="button" className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-4 py-2.5 text-sm font-semibold hover:bg-white/5"><RefreshCw size={16} /> Refresh</button>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/staff/coaches/nate" className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-black text-black">
+              <UserRoundPlus size={16}/> Set up CoachNate
+            </Link>
+            <button onClick={() => void load()} type="button" className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-4 py-2.5 text-sm font-semibold hover:bg-white/5"><RefreshCw size={16} /> Refresh</button>
+          </div>
         </div>
       </header>
       <p className="mt-4 rounded-2xl border border-orange-400/20 bg-orange-400/5 p-4 text-sm text-orange-200">

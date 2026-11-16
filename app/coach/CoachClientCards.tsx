@@ -3,7 +3,7 @@ import {useEffect,useState} from "react"
 import {createClient} from "@/lib/supabase/client"
 
 type Card={
- member_name:string;member_code:string;package_name:string
+ member_name:string;member_code:string;package_name:string;branch?:string
  total_sessions:number;sessions_used:number;sessions_left:number
  last_sessions:string[];membership_status?:string;balance_verified?:boolean;assignment_source?:string
 }
@@ -98,6 +98,7 @@ export default function CoachClientCards({bookings=[]}:{bookings?:Booking[]}){
          <p className="text-xs text-white/50">Client {index+1}</p>
          <h3 className="mt-3 break-words text-lg font-black">{client.member_name}</h3>
          <p className="mt-2 text-xs text-orange-300">{client.member_code} · {client.package_name}{bonus?" + "+bonus+" bonus":""}</p>
+         {client.branch&&<p className="mt-1 text-xs text-white/45">Branch: {client.branch}</p>}
          <p className="mt-2 text-xs text-white/60">Used: {client.sessions_used} / {client.total_sessions}</p>
          <p className="mt-1 text-sm font-bold text-emerald-300">Remaining: {remaining}</p>
          <p className="mt-2 text-xs text-white/55">Latest sessions: {client.last_sessions?.length?
