@@ -1,10 +1,11 @@
 // Usernames are public aliases; passwords are still verified by Supabase Auth.
+// CoachNate is the sole named coach alias; existing coach1–coachN remain unchanged.
 // Reserved .invalid domain prevents sending recovery mail to any real mailbox.
 export const COACH_ALIAS_DOMAIN = "accounts.bearfit.invalid"
 
 export function normalizeCoachUsername(value: string) {
   const candidate = value.trim().toLowerCase()
-  return /^coach[1-9][0-9]{0,5}$/.test(candidate) ? candidate : null
+  return /^(?:coach[1-9][0-9]{0,5}|coachnate)$/.test(candidate) ? candidate : null
 }
 
 export function coachAliasEmail(value: string) {
