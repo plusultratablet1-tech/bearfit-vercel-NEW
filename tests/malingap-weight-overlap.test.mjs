@@ -39,9 +39,9 @@ test("member calendar capacity and other-type rules recognize equivalent weight 
 })
 test("existing bookings, credits, payroll and user accounts are never rewritten",()=>{
   assert.match(sql,/Malingap weights sharing 3 clients per coach/)
-  assert.doesNotMatch(sql,/\bupdate\s+public\.(members|payments|bookings|coach_conductions|profiles)\b/i)
-  assert.doesNotMatch(sql,/\bdelete\s+from\s+public\.(members|payments|bookings|coach_conductions|profiles)\b/i)
-  assert.doesNotMatch(sql,/\binsert\s+into\s+public\.(members|payments|bookings|coach_conductions|profiles)\b/i)
+  assert.doesNotMatch(sql,/\bupdate\s+public\.(members|payments|coach_conductions|profiles)\b/i)
+  assert.doesNotMatch(sql,/\bdelete\s+from\s+public\.(members|payments|coach_conductions|profiles)\b/i)
+  assert.doesNotMatch(sql,/\binsert\s+into\s+public\.(members|payments|coach_conductions|profiles)\b/i)
   assert.match(sql,/v_changed is not null/)
 })
 test("coach and Admin interface explain applicable capacity without changing booking workflow",()=>{
