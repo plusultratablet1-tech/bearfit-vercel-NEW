@@ -7,7 +7,7 @@ const migration=readFileSync("supabase/migrations/20261112210000_coach_daily_wee
 const home=readFileSync("app/coach/CoachHomeClient.tsx","utf8")
 
 test("planner added without removing existing schedule operations",()=>{
-  assert.match(home,/CoachSessionPlanner onCreated=\{refresh\}/)
+  assert.match(home,/CoachSessionPlanner onCreated=\{async\(\)=>\{await refresh\(\);setPlannerRefresh/)
   assert.match(home,/<CoachScheduleOverview/)
   assert.match(home,/<CoachActivityPanel/)
 })

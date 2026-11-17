@@ -3,6 +3,7 @@
 import {useEffect,useState,type FormEvent} from "react"
 import {createClient} from "@/lib/supabase/client"
 import {SESSION_TAXONOMY} from "@/lib/session-taxonomy"
+import {malingapWeightTraining} from "@/lib/malingap-weight-capacity"
 import {CalendarPlus,ChevronDown} from "lucide-react"
 
 type Client={member_name:string;member_code:string;branch?:string;membership_status?:string;assignment_source?:string}
@@ -132,6 +133,11 @@ export default function CoachSessionPlanner({onCreated}:{onCreated:()=>Promise<v
           {[2,3,4,5,6,7,8].map(n=><option key={n} value={n}>{n} weeks</option>)}
         </select>
       </label>}
+      {malingapWeightTraining(clients.find(client=>client.member_code===memberCode)?.branch||"",sessionLabel)&&
+        <p role="note" className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-200">
+          Malingap weights: up to 3 different assigned clients can share this time slot.
+          Boxing or a fourth overlapping client will be blocked. Admin confirms each booking separately.
+        </p>}
       <p className="text-xs text-white/50">New sessions appear as Pending in the shared schedule. Scheduling does not mark attendance, deduct credits, or alter coach payroll. Conflicts stop the entire request.</p>
       {rosterError&&<p role="alert" className="text-sm text-red-300">{rosterError}</p>}
       {clients.length===0&&!rosterLoading&&!rosterError&&<p className="text-sm text-amber-300">No clients assigned yet. Ask Admin to link your clients first.</p>}
