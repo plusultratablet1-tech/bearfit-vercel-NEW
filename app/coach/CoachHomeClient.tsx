@@ -90,7 +90,30 @@ export default function CoachHomeClient({coach,tab="home"}:{coach:Coach|null;tab
     setBusy(null);setPassword("");setConfirm("")
     if(e)setError(e.message);else setNotice("Password updated.")
   }
-  async function signOut(){await supabase.auth.signOut();window.location.href="/login"}
+  async function signOut() {
+    if (busy === "signout") return
+    setBusy("signout")
+    setError("")
+    setNotice("")
+    try {
+      // Log out only this browser. Remote sign-out is a separate Admin action;
+      // a coach's own logout should not unexpectedly end other devices' sessions.
+      // Supabase local signOut clears SSR-backed browser cookies even when its
+      // best-effort server refresh-token revocation encounters a stale session.
+      const { error: logoutError } = await supabase.auth.signOut({ scope: "local" })
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        setError(logoutError?.message || "Sign out was not completed. Please try again.")
+        return
+      }
+      // Replace the history entry so Back cannot reopen a stale coach screen.
+      window.location.replace("/login")
+    } catch {
+      setError("Could not finish signing out. Please try again.")
+    } finally {
+      setBusy(null)
+    }
+  }
   const shifts=data?.shifts||[]
   const now=Date.now()
   const todays=shifts.filter(s=>dateOnly(s.starts_at)===dateOnly(new Date().toISOString()))
@@ -106,7 +129,10 @@ export default function CoachHomeClient({coach,tab="home"}:{coach:Coach|null;tab
           <h1 className="mt-2 text-2xl font-black">Welcome{coach?", "+coach.display_name:""}</h1>
           <p className="mt-1 text-sm text-white/55">{coach?.allowedBranches?.length ? coach.allowedBranches.join(" · ") : (coach?.branch||"Account setup needed")} · {coach?.username?.toLowerCase()==="coachnate" ? "CoachNate" : (coach?.username||"Account not linked")}</p></div>
         <div className="flex gap-2"><button onClick={()=>void refresh()} className="rounded-xl border border-white/15 p-2.5" aria-label="Refresh"><RefreshCw size={17}/></button>
-        <button onClick={()=>void signOut()} className="flex items-center gap-1 rounded-xl border border-white/15 px-3 py-2 text-sm"><LogOut size={16}/> Sign out</button></div>
+        <button type="button" disabled={busy==="signout"} onClick={()=>void signOut()}
+          aria-label="Sign out of Coach Portal" className="flex items-center gap-1 rounded-xl border border-white/15 px-3 py-2 text-sm disabled:cursor-wait disabled:opacity-60">
+          <LogOut size={16}/>{busy==="signout"?"Signing out…":"Sign out"}
+        </button></div>
       </header>
       {error&&<p role="alert" className="rounded-xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-200">{error}</p>}
       {notice&&<p role="status" className="rounded-xl border border-green-400/20 bg-green-400/10 p-4 text-sm text-green-200">{notice}</p>}
