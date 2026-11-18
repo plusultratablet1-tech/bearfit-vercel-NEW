@@ -71,9 +71,8 @@ begin
     raise exception 'Location is outdated. Tap check-in again at the gym';
   end if;
   if p_latitude is null or p_longitude is null or
-     not isfinite(p_latitude) or not isfinite(p_longitude) or
      p_latitude not between -90 and 90 or p_longitude not between -180 and 180 or
-     p_accuracy_m is null or not isfinite(p_accuracy_m) or p_accuracy_m<=0 then
+     p_accuracy_m is null or p_accuracy_m not between 0.1 and 100000 then
     raise exception 'A valid device location is required';
   end if;
   select * into v_cfg from public.coach_branch_gps_settings
