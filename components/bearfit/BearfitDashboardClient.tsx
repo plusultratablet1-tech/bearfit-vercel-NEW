@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
+import MemberTrainingCheckIn from "@/components/bearfit/MemberTrainingCheckIn"
 import type {
   BearforceSummary,
   BookingRow,
@@ -323,6 +324,8 @@ export default function BearfitDashboardClient({
               )}
             </section>
 
+            {member && <MemberTrainingCheckIn bookings={upcomingBookings} />}
+
             {loadError && (
               <div className="mb-5 rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">
                 {loadError}
@@ -469,7 +472,7 @@ export default function BearfitDashboardClient({
                                     Manage booking
                                   </Link>
                                 </div>
-                                <p className="mt-2 text-center text-[11px] font-medium text-white/45">Check-in is completed by BearFit staff.</p>
+                                <p className="mt-2 text-center text-[11px] font-medium text-white/45">When you arrive, tap I'm Here — Check In on your Home screen.</p>
                               </div>
                             </div>
                           </div>

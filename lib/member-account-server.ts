@@ -100,7 +100,7 @@ export async function loadMemberAccountData(userId: string): Promise<MemberAccou
       .select("*")
       .eq("member_id", member.id)
       .in("status", ["pending", "confirmed"])
-      .gte("requested_start_at", new Date().toISOString())
+      .gte("requested_start_at", new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString())
       .order("requested_start_at", { ascending: true })
       .limit(20),
     supabase.rpc("member_bearforce_summary"),

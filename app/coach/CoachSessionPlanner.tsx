@@ -63,7 +63,7 @@ export default function CoachSessionPlanner({onCreated}:{onCreated:()=>Promise<v
     if(!start||Number.isNaN(timestamp.getTime())){setError("Choose a valid date and time.");return}
     if(timestamp.getTime()<=Date.now()+5*60*1000){setError("Choose a future time at least 5 minutes away.");return}
     setBusy(true)
-    const {data,error:rpcError}=await db.rpc("coach_plot_sessions",{
+    const {data,error:rpcError}=await db.rpc("coach_book_sessions_direct",{
       p_member_code:memberCode,
       p_session_label:sessionLabel,
       p_start_at:timestamp.toISOString(),
@@ -73,7 +73,7 @@ export default function CoachSessionPlanner({onCreated}:{onCreated:()=>Promise<v
     setBusy(false)
     if(rpcError){setError(rpcError.message);return}
     const count=(data as {count?:number}|null)?.count||1
-    setSuccess(count+" session"+(count===1?"":"s")+" plotted for Admin confirmation. No package sessions were deducted.")
+    setSuccess(count+" session"+(count===1?"":"s")+" confirmed and visible to Member and Admin. No package sessions were deducted.")
     setMemberCode("")
     try{await onCreated()}catch{setError("Request saved, but refreshing your schedule failed. Reload the page to see it.")}
   }
@@ -82,13 +82,13 @@ export default function CoachSessionPlanner({onCreated}:{onCreated:()=>Promise<v
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div>
         <p className="text-xs font-bold uppercase tracking-widest text-orange-300">Daily & weekly planner</p>
-        <h2 className="mt-1 text-xl font-black">Plot a client session</h2>
-        <p className="mt-1 text-sm text-white/55">Choose an assigned client. Admin confirms the final booking.</p>
+        <h2 className="mt-1 text-xl font-black">Book a client session</h2>
+        <p className="mt-1 text-sm text-white/55">Arrange training with your assigned client, then book it. BearFit checks capacity and package eligibility automatically.</p>
       </div>
       <button type="button" onClick={()=>{setOpen(v=>!v);setError("");setSuccess("")}}
         aria-expanded={open}
         className="flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-3 text-sm font-bold text-white">
-        <CalendarPlus size={17}/>{open?"Close planner":"Plot New Session"}<ChevronDown size={15} className={open?"rotate-180":""}/>
+        <CalendarPlus size={17}/>{open?"Close planner":"Book New Session"}<ChevronDown size={15} className={open?"rotate-180":""}/>
       </button>
     </div>
 
@@ -136,16 +136,16 @@ export default function CoachSessionPlanner({onCreated}:{onCreated:()=>Promise<v
       {malingapWeightTraining(clients.find(client=>client.member_code===memberCode)?.branch||"",sessionLabel)&&
         <p role="note" className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-200">
           Malingap weights: up to 3 different assigned clients can share this time slot.
-          Boxing or a fourth overlapping client will be blocked. Admin confirms each booking separately.
+          Boxing or a fourth overlapping client will be blocked. The system checks capacity automatically.
         </p>}
-      <p className="text-xs text-white/50">New sessions appear as Pending in the shared schedule. Scheduling does not mark attendance, deduct credits, or alter coach payroll. Conflicts stop the entire request.</p>
+      <p className="text-xs text-white/50">New sessions appear as Confirmed in the Member and Admin schedules. The member may review or request changes. Booking never deducts sessions or approves payroll. Conflicts stop the entire request.</p>
       {rosterError&&<p role="alert" className="text-sm text-red-300">{rosterError}</p>}
       {clients.length===0&&!rosterLoading&&!rosterError&&<p className="text-sm text-amber-300">No clients assigned yet. Ask Admin to link your clients first.</p>}
       {error&&<p role="alert" className="text-sm text-red-300">{error}</p>}
       {success&&<p role="status" className="text-sm text-emerald-300">{success}</p>}
       <button disabled={busy||rosterLoading||!!rosterError||clients.length===0}
         className="rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold text-white disabled:opacity-40">
-        {busy?"Checking schedule…":repeat?"Plot weekly sessions":"Plot daily session"}
+        {busy?"Checking schedule…":repeat?"Book weekly sessions":"Book daily session"}
       </button>
     </form>}
   </section>
