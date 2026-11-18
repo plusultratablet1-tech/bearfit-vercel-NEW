@@ -4,7 +4,9 @@
 -- Critical: never treat arrival alone as conducted training or deduct sessions.
 create table if not exists public.member_training_arrivals (
   id uuid primary key default gen_random_uuid(),
-  booking_id uuid not null unique references public.bookings(id) on delete restrict,
+  booking_id uuid not null references public.bookings(id) on delete restrict,
+  final_schedule_revision integer not null,
+  unique(booking_id,final_schedule_revision),
   member_id uuid not null references public.members(id) on delete restrict,
   checked_in_by uuid not null references auth.users(id),
   branch text not null,
@@ -57,7 +59,7 @@ begin
   if v_member.branch is distinct from v_booking.branch then
     raise exception 'Member and booking branches do not match';
   end if;
-  select * into v_arrival from public.member_training_arrivals where booking_id=p_booking_id;
+  select * into v_arrival from public.member_training_arrivals where booking_id=p_booking_id and final_schedule_revision=v_booking.final_schedule_revision;
   if found then return jsonb_build_object(
     'status','already_checked_in','booking_id',p_booking_id,
     'checked_in_at',v_arrival.checked_in_at
@@ -91,8 +93,8 @@ begin
     raise exception 'Please check in when you are physically at your BearFit branch';
   end if;
   insert into public.member_training_arrivals
-    (booking_id,member_id,checked_in_by,branch,observed_at,distance_m,accuracy_m)
-  values(p_booking_id,v_member.id,v_uid,v_booking.branch,p_observed_at,v_distance,p_accuracy_m)
+    (booking_id,final_schedule_revision,member_id,checked_in_by,branch,observed_at,distance_m,accuracy_m)
+  values(p_booking_id,v_booking.final_schedule_revision,v_member.id,v_uid,v_booking.branch,p_observed_at,v_distance,p_accuracy_m)
   returning * into v_arrival;
   return jsonb_build_object('status','checked_in','booking_id',p_booking_id,
     'checked_in_at',v_arrival.checked_in_at,'session_deducted',false);
@@ -150,7 +152,7 @@ begin
       at time zone 'Asia/Manila','YYYY-MM-DD HH24:MI')) from public.member_training_arrivals a
     join public.bookings b on b.id=a.booking_id
     where b.assigned_coach_user_id=v_uid and private.coach_branch_allowed(v_coach.id,b.branch)
-      and a.checked_in_at>=now()-interval '45 days'
+      and a.final_schedule_revision=b.final_schedule_revision and a.checked_in_at>=now()-interval '45 days'
   ),'{}'::jsonb);
 end $fn$;
 revoke all on function public.coach_training_arrival_status() from public,anon;
@@ -190,8 +192,8 @@ begin
     raise exception 'Complete Session is available during/shortly after the training time';
   end if;
   select * into v_arrival from public.member_training_arrivals
-    where booking_id=p_booking_id and member_id=v_booking.member_id
-      and branch=v_booking.branch
+    where booking_id=p_booking_id and final_schedule_revision=v_booking.final_schedule_revision
+      and member_id=v_booking.member_id and branch=v_booking.branch
       and checked_in_at between v_booking.start_at-interval '90 minutes'
                             and v_booking.end_at+interval '30 minutes';
   if not found then
