@@ -38,6 +38,7 @@ export default function CoachScheduleOverview({shifts,onRefresh,onPunch,punchBus
  const [data,setData]=useState<Overview>({bookings:[],requests:[]}),[loading,setLoading]=useState(true),[error,setError]=useState(""),[notice,setNotice]=useState(""),[busy,setBusy]=useState<string|null>(null),[reason,setReason]=useState<Record<string,string>>({}),[week,setWeek]=useState(()=>monday(localDay(new Date().toISOString()))),[selected,setSelected]=useState(()=>localDay(new Date().toISOString()))
  const [clockDialog,setClockDialog]=useState<{shiftId:string;action:"in"|"out"}|null>(null)
  const [clientFinal,setClientFinal]=useState<Record<string,boolean>>({})
+ const [clientArrivals,setClientArrivals]=useState<Record<string,string>>({})
  const [gpsEnabled,setGpsEnabled]=useState(false)
  const [openWeek,setOpenWeek]=useState<{enabled:boolean;clock_in_at:string|null;clock_out_at:string|null;blocking_clock_in_at?:string|null}>({enabled:false,clock_in_at:null,clock_out_at:null})
  async function loadOpenWeek(){const {data}=await db.rpc("coach_open_gps_status");if(data)setOpenWeek(data)}
@@ -46,13 +47,15 @@ export default function CoachScheduleOverview({shifts,onRefresh,onPunch,punchBus
  const [clockError,setClockError]=useState("")
  const [clockSubmitting,setClockSubmitting]=useState(false)
  async function load(){
-   const [r,finals]=await Promise.all([
+   const [r,finals,arrivals]=await Promise.all([
       db.rpc("coach_schedule_overview"),
-      db.rpc("coach_final_booking_confirmation_status")
+      db.rpc("coach_final_booking_confirmation_status"),
+      db.rpc("coach_training_arrival_status")
    ])
    if(r.error)setError(r.error.message)
    else{setData(r.data as Overview);setError(finals.error?.message??"")}
    if(!finals.error)setClientFinal((finals.data??{}) as Record<string,boolean>)
+   if(!arrivals.error)setClientArrivals((arrivals.data??{}) as Record<string,string>)
    setLoading(false)
  }
  useEffect(()=>{void load()},[])
@@ -105,11 +108,25 @@ export default function CoachScheduleOverview({shifts,onRefresh,onPunch,punchBus
    setNotice("Attendance report sent to Admin for review. No session was deducted.")
    await load()
  }
+ const canComplete=(b:Booking)=>b.status==="confirmed"&&Boolean(clientArrivals[b.id])&&
+    Date.now()>=Date.parse(b.start_at)+20*60000&&
+    Date.now()<=Date.parse(b.end_at)+3*3600000
+ async function completeSession(b:Booking){
+   if(!canComplete(b)||busy!==null)return
+   setBusy(b.id);setError("");setNotice("")
+   const {data,error:e}=await db.rpc("coach_complete_checkedin_booking",{p_booking_id:b.id})
+   setBusy(null)
+   if(e){setError(e.message);return}
+   const status=(data as {status?:string}|null)?.status
+   setNotice(status==="already_completed"?"This session was already recorded. No additional deduction.":"Session completed with verified member check-in. One session recorded; coach payroll awaits Admin review.")
+   await load()
+   await onRefresh()
+ }
  const canReportNoShow=(b:Booking)=>b.status==="confirmed"&&Boolean(b.end_at)&&Date.parse(b.end_at)<=Date.now()
  async function respond(id:string,response:"available"|"conflict"|"cancel_requested"){setBusy(id);setError("");setNotice("");const r=await db.rpc("coach_schedule_respond",{p_booking_id:id,p_response:response,p_reason:reason[id]||null});setBusy(null);if(r.error)setError(r.error.message);else{setNotice("Response saved for Admin review. Official booking status unchanged.");await load();await onRefresh()}}
  return <div className="space-y-5">
  <div className="flex flex-col gap-4 border-b border-white/10 pb-5 xl:flex-row xl:items-start xl:justify-between">
- <div><p className="text-xs font-black uppercase tracking-[.22em] text-orange-300">Coach Operations · Admin-connected</p><h1 className="mt-2 text-3xl font-black">My Schedule</h1><p className="mt-2 text-sm text-white/50">Assigned by BearFit Admin · Philippines time</p></div>
+ <div><p className="text-xs font-black uppercase tracking-[.22em] text-orange-300">Coach Operations · Admin-connected</p><h1 className="mt-2 text-3xl font-black">My Schedule</h1><p className="mt-2 text-sm text-white/50">Coach & Admin-connected schedule · Philippines time</p></div>
  <div className="flex shrink-0 flex-col items-start gap-1.5 xl:items-end">
   {openWeek.enabled&&<p className="text-xs text-orange-300">Open GPS testing · Nov 9–15 · Admin review required</p>}
   {!gpsEnabled&&<p className="text-xs text-amber-200">GPS branch setup required</p>}
@@ -134,6 +151,7 @@ export default function CoachScheduleOverview({shifts,onRefresh,onPunch,punchBus
   <section className="mt-7"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-widest text-orange-300">Weekly Calendar</p><h2 className="mt-1 text-xl font-black">Assigned shifts & client sessions</h2></div><div className="flex items-center gap-2"><button aria-label="Previous week" onClick={()=>{setWeek(addDays(week,-7));setSelected(addDays(week,-7))}} className="rounded-xl border border-white/15 p-2"><ChevronLeft size={19}/></button><span className="text-xs text-white/65">{start} – {end}</span><button aria-label="Next week" onClick={()=>{setWeek(addDays(week,7));setSelected(addDays(week,7))}} className="rounded-xl border border-white/15 p-2"><ChevronRight size={19}/></button><button onClick={()=>{setWeek(monday(today));setSelected(today)}} className="rounded-xl bg-orange-500 px-3 py-2 text-xs font-bold">Today</button></div></div>
   <div className="mt-4 grid grid-cols-7 gap-1.5">{days.map(day=><button key={day} onClick={()=>setSelected(day)} aria-pressed={selected===day} className={"min-h-24 rounded-xl border p-2 text-center "+(selected===day?"border-orange-500 bg-orange-500/15":"border-white/10 bg-[#242424]")}><p className="text-[10px] text-white/50">{new Intl.DateTimeFormat("en-PH",{weekday:"short",timeZone:"UTC"}).format(new Date(day+"T12:00:00Z"))}</p><p className="mt-1 font-black">{day.slice(-2)}</p><p className="mt-2 text-[10px] text-orange-300">{bookings.filter(b=>localDay(b.start_at)===day).length} session(s)</p><p className="text-[10px] text-emerald-300">{shifts.filter(s=>localDay(s.starts_at)===day).length} shift(s)</p></button>)}</div>
   <div className="mt-4 rounded-2xl bg-[#202020] p-4"><h3 className="font-bold">{selected} · Daily view</h3>{dayList.length===0&&shiftList.length===0&&<p className="mt-3 text-sm text-white/50">No sessions or shifts assigned for this day.</p>}{dayList.map(b=><div key={b.id} className="mt-3 rounded-xl border border-white/10 p-3"><p className="font-semibold">{b.member_name} · {b.member_code}</p><p className="mt-1 text-xs text-white/60">{ph(b.start_at)} · {b.session_label||b.session_type} · {b.status}</p>{b.coach_response&&<p className="mt-1 text-xs text-orange-300">Coach response: {b.coach_response}</p>}
+   {clientArrivals[b.id]&&<p className="mt-2 text-xs font-semibold text-emerald-300">Member checked in at {clientArrivals[b.id]} (PH)</p>}
    {b.status==="confirmed"&&<p className={"mt-2 text-xs font-semibold "+(clientFinal[b.id]?"text-emerald-300":"text-amber-200")}>
      {clientFinal[b.id]?"Member confirmed FINAL schedule":"Awaiting client final schedule acknowledgment — remind member"}
    </p>}
@@ -145,10 +163,20 @@ export default function CoachScheduleOverview({shifts,onRefresh,onPunch,punchBus
   <button disabled={busy!==null} onClick={()=>void reportNoShow(b)}
    className="mt-2 rounded-lg border border-amber-500/30 px-3 py-2 text-xs font-bold text-amber-200 disabled:opacity-50">Report no-show to Admin</button>
  </div>}</div>)}{shiftList.map(s=><p key={s.id} className="mt-2 rounded-lg border border-white/10 p-3 text-sm">Shift: {ph(s.starts_at)} – {ph(s.ends_at)} · {s.response}</p>)}</div></section>
-  <section className="mt-7"><h2 className="text-xl font-black">Today's Client Sessions</h2><p className="mt-1 text-sm text-white/50">Assigned bookings from Admin. Session deduction stays in Scan QR.</p><div className="mt-4 grid gap-3 md:grid-cols-2">{todays.length?todays.map(b=><div key={b.id} className="rounded-[20px] bg-[#242424] p-5"><p className="font-black">{b.member_name}</p><p className="mt-1 text-sm text-orange-300">{b.member_code} · {b.session_label||b.session_type}</p><p className="mt-2 text-xs text-white/55">{ph(b.start_at)} · {b.status}</p>{b.coach_response&&<p className="mt-2 text-xs text-emerald-300">Your response: {b.coach_response}</p>}
+  <section className="mt-7"><h2 className="text-xl font-black">Today's Client Sessions</h2><p className="mt-1 text-sm text-white/50">Coach and Admin bookings. A verified member check-in is required before the one-tap Complete Session action can deduct a package session.</p><div className="mt-4 grid gap-3 md:grid-cols-2">{todays.length?todays.map(b=><div key={b.id} className="rounded-[20px] bg-[#242424] p-5"><p className="font-black">{b.member_name}</p><p className="mt-1 text-sm text-orange-300">{b.member_code} · {b.session_label||b.session_type}</p><p className="mt-2 text-xs text-white/55">{ph(b.start_at)} · {b.status}</p>{b.coach_response&&<p className="mt-2 text-xs text-emerald-300">Your response: {b.coach_response}</p>}
    {b.status==="confirmed"&&<p className={"mt-2 text-xs font-semibold "+(clientFinal[b.id]?"text-emerald-300":"text-amber-200")}>
      {clientFinal[b.id]?"Member confirmed FINAL booking":"Member final confirmation is pending"}
-   </p>}<div className="mt-3 flex flex-wrap gap-2"><button disabled={busy!==null||b.status!=="confirmed"} onClick={()=>void respond(b.id,"available")} className="rounded-lg bg-orange-500 px-3 py-2 text-xs font-bold disabled:opacity-40">I'm available</button><button disabled={busy!==null||b.status!=="confirmed"} onClick={()=>void respond(b.id,"cancel_requested")} className="rounded-lg border border-white/20 px-3 py-2 text-xs disabled:opacity-40">Request cancellation</button></div><input aria-label={"Reason for "+b.member_name} placeholder="Reason for conflict/cancellation" maxLength={300} value={reason[b.id]||""} onChange={e=>setReason(v=>({...v,[b.id]:e.target.value}))} className="mt-3 w-full rounded-lg border border-white/10 bg-[#161616] px-3 py-2 text-sm"/></div>):<p className="rounded-xl bg-[#242424] p-5 text-sm text-white/55 md:col-span-2">No confirmed client sessions assigned today.</p>}</div></section>
+   </p>}
+   {b.status==="confirmed"&&<div className="mt-3">
+     <button type="button" disabled={busy!==null||!canComplete(b)} onClick={()=>void completeSession(b)}
+       className="w-full rounded-xl bg-white px-4 py-3 text-sm font-black text-[#171717] disabled:cursor-not-allowed disabled:opacity-40">
+       {busy===b.id?"Recording…":"Complete Session"}
+     </button>
+     {!clientArrivals[b.id]&&<p className="mt-2 text-xs text-amber-200">Awaiting member's verified I'm Here check-in. Missing arrival? Ask Admin to review.</p>}
+     {clientArrivals[b.id]&&!canComplete(b)&&<p className="mt-2 text-xs text-white/50">Completion opens after the session has been underway for 20 minutes.</p>}
+   </div>}
+   {b.status==="completed"&&<p className="mt-3 text-xs font-semibold text-emerald-300">Session completed · package record updated</p>}
+   <div className="mt-3 flex flex-wrap gap-2"><button disabled={busy!==null||b.status!=="confirmed"} onClick={()=>void respond(b.id,"available")} className="rounded-lg bg-orange-500 px-3 py-2 text-xs font-bold disabled:opacity-40">I'm available</button><button disabled={busy!==null||b.status!=="confirmed"} onClick={()=>void respond(b.id,"cancel_requested")} className="rounded-lg border border-white/20 px-3 py-2 text-xs disabled:opacity-40">Request cancellation</button></div><input aria-label={"Reason for "+b.member_name} placeholder="Reason for conflict/cancellation" maxLength={300} value={reason[b.id]||""} onChange={e=>setReason(v=>({...v,[b.id]:e.target.value}))} className="mt-3 w-full rounded-lg border border-white/10 bg-[#161616] px-3 py-2 text-sm"/></div>):<p className="rounded-xl bg-[#242424] p-5 text-sm text-white/55 md:col-span-2">No confirmed client sessions assigned today.</p>}</div></section>
   <section className="mt-7 rounded-[24px] bg-[#171717] p-5"><h2 className="text-xl font-black">Session Requests</h2><p className="mt-1 text-sm text-white/50">Member requests addressed to you, awaiting Admin confirmation.</p>{requests.length===0?<p className="mt-4 text-sm text-white/50">No pending requests for this coach.</p>:requests.map(r=><div key={r.id} className="mt-4 rounded-xl border border-white/10 bg-[#242424] p-4"><p className="font-bold">{r.member_name} · {r.member_code}</p><p className="mt-1 text-xs text-white/55">{ph(r.start_at)} · {r.session_label||r.session_type}</p>{r.coach_response&&<p className="mt-1 text-xs text-orange-300">Your response: {r.coach_response}</p>}<input aria-label={"Conflict reason for "+r.member_name} placeholder="Reason if unavailable" value={reason[r.id]||""} onChange={e=>setReason(v=>({...v,[r.id]:e.target.value}))} className="mt-3 w-full rounded-lg bg-[#161616] p-2 text-sm"/><div className="mt-3 flex flex-wrap gap-2"><button disabled={busy!==null} onClick={()=>void respond(r.id,"available")} className="rounded-lg bg-orange-500 px-3 py-2 text-xs font-bold">Available</button><button disabled={busy!==null} onClick={()=>void respond(r.id,"conflict")} className="rounded-lg border border-white/20 px-3 py-2 text-xs">Report conflict</button></div></div>)}</section>
  </section>
  {clockDialog&&<div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/75 p-4" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget&&!clockSubmitting)setClockDialog(null)}}>
