@@ -41,6 +41,7 @@ export default function MemberTrainingCheckIn({ bookings }: { bookings: BookingR
     .sort((a, b) => Date.parse(a.start_at!) - Date.parse(b.start_at!))[0] ?? null,
     [bookings, today])
   const bookingId = booking?.id ?? null
+  const scheduleRevision = (booking as (BookingRow & { final_schedule_revision?: number }) | null)?.final_schedule_revision ?? 0
   const canCheckIn = Boolean(booking && booking.start_at && booking.end_at &&
     now >= Date.parse(booking.start_at) - 90 * 60000 &&
     now <= Date.parse(booking.end_at) + 30 * 60000)
@@ -55,7 +56,7 @@ export default function MemberTrainingCheckIn({ bookings }: { bookings: BookingR
       return () => { active = false }
     }
     void db.from("member_training_arrivals").select("booking_id")
-      .eq("booking_id", bookingId).maybeSingle()
+      .eq("booking_id", bookingId).eq("final_schedule_revision", scheduleRevision).maybeSingle()
       .then(({ data, error: readError }) => {
         if (!active) return
         if (readError) setError("Check-in is temporarily unavailable. Please ask BearFit staff for assistance.")
@@ -63,7 +64,7 @@ export default function MemberTrainingCheckIn({ bookings }: { bookings: BookingR
         setChecking(false)
       })
     return () => { active = false }
-  }, [bookingId])
+  }, [bookingId, scheduleRevision])
 
   async function checkIn() {
     if (!bookingId || !canCheckIn || loading || checking || arrived) return
